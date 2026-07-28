@@ -1,0 +1,8 @@
+/.env
+/.env.example
+/.venv
+/ARCHITECTURE.md
+/PRD-backend-psycare.md
+/psycare.db
+/seed.py
+/uploads
