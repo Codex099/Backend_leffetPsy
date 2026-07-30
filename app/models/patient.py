@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Date, Integer
+from sqlalchemy import Column, String, Date, Integer, Boolean, DateTime
 from app.db.session import Base
 
 
@@ -14,3 +14,8 @@ class Patient(Base):
     photo = Column(String, nullable=True)
     nombre_freres_soeurs = Column(Integer, nullable=True)
     ordre_naissance = Column(Integer, nullable=True)
+
+    # Gestion du statut actif / inactif
+    est_actif = Column(Boolean, nullable=False, default=True)
+    date_desactivation = Column(DateTime, nullable=True)  # rempli auto à la désactivation
+    date_reactivation = Column(DateTime, nullable=True)   # rempli auto à la réactivation

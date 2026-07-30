@@ -11,12 +11,15 @@ from app.schemas.patient import PatientCreate, PatientUpdate, AssocierParentRequ
 from app.services.access_control_service import get_accessible_patient_ids
 
 
-def get_all(employee, db: Session) -> List[Patient]:
+def get_all(employee, db: Session, actif: Optional[bool] = None) -> List[Patient]:
     patient_ids = get_accessible_patient_ids(employee, db)
     q = db.query(Patient)
     if patient_ids is not None:
         q = q.filter(Patient.id.in_(patient_ids))
+    if actif is not None:
+        q = q.filter(Patient.est_actif == actif)
     return q.all()
+
 
 
 def get_by_id(patient_id: str, db: Session) -> Patient:

@@ -18,6 +18,7 @@ from app.models.etape_plan_therapeutique import EtapePlanTherapeutique
 from app.models.tache import Tache
 from app.models.evenement_calendrier import EvenementCalendrier
 from app.models.note_patient import NotePatient
+from app.models.patient_statut_historique import PatientStatutHistorique  # [NEW]
 
 __all__ = [
     "Parent",
@@ -39,4 +40,6 @@ __all__ = [
     "Tache",
     "EvenementCalendrier",
     "NotePatient",
+    "PatientStatutHistorique",  # [NEW]
 ]
+

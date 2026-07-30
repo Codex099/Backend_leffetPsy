@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel
 from app.models.patient_parent import RoleParentEnum
 
@@ -28,6 +28,9 @@ class PatientUpdate(BaseModel):
 
 class PatientResponse(PatientBase):
     id: str
+    est_actif: bool
+    date_desactivation: Optional[datetime] = None
+    date_reactivation: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -35,3 +38,12 @@ class PatientResponse(PatientBase):
 class AssocierParentRequest(BaseModel):
     parent_id: str
     role: RoleParentEnum
+
+
+# ─── Statut actif / inactif ───────────────────────────────────────────────────
+
+class ChangerStatutRequest(BaseModel):
+    """Payload pour activer ou désactiver un patient."""
+    est_actif: bool
+    note_degradation: Optional[str] = None  # optionnel lors d'une réactivation
+
