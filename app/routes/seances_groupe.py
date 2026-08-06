@@ -11,8 +11,8 @@ router = APIRouter(prefix="/api/seances-groupe", tags=["Séances de Groupe"])
 
 
 @router.get("", response_model=List[SeanceGroupeResponse])
-def list_seances_groupe(db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return seance_groupe_service.get_all(db)
+def list_seances_groupe(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(get_current_employee)):
+    return seance_groupe_service.get_all(db, limit=limit, offset=offset)
 
 
 @router.post("", response_model=SeanceGroupeResponse, status_code=status.HTTP_201_CREATED)

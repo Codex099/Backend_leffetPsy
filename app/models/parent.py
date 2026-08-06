@@ -17,6 +17,6 @@ class Parent(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     nom = Column(String, nullable=False)
     prenom = Column(String, nullable=False)
-    telephone = Column(String, nullable=False)
+    telephone = Column(String, unique=True, nullable=False)  # unique — doublon interdit (US-M17)
     etat_civil = Column(Enum(EtatCivilEnum), nullable=False)
     adresse = Column(String, nullable=True)

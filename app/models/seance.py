@@ -23,8 +23,8 @@ class Seance(Base):
     __tablename__ = "seances"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    patient_id = Column(String, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
-    date = Column(Date, nullable=False)
+    patient_id = Column(String, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)  # indexé
+    date = Column(Date, nullable=False, index=True)  # indexé — tri et filtre fréquents
     heure_debut = Column(Time, nullable=True)
     heure_fin = Column(Time, nullable=True)
     statut = Column(Enum(StatutSeanceEnum), nullable=False, default=StatutSeanceEnum.prevue)

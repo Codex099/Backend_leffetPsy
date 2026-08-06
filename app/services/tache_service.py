@@ -8,11 +8,11 @@ from app.models.tache import Tache
 from app.schemas.tache import TacheCreate, TacheUpdate
 
 
-def get_all(employee, db: Session) -> List[Tache]:
+def get_all(employee, db: Session, limit: int = 100, offset: int = 0) -> List[Tache]:
     q = db.query(Tache)
     if employee.role != "admin":
         q = q.filter(Tache.assigne_a == employee.id)
-    return q.all()
+    return q.offset(offset).limit(limit).all()
 
 
 def get_by_id(tache_id: str, db: Session) -> Tache:

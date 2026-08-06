@@ -24,10 +24,10 @@ class Tache(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     titre = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    assigne_a = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+    assigne_a = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)  # indexé
     cree_par = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
     patient_id = Column(String, ForeignKey("patients.id", ondelete="SET NULL"), nullable=True)
     etape_plan_id = Column(String, ForeignKey("etapes_plan_therapeutique.id", ondelete="SET NULL"), nullable=True)
-    statut = Column(Enum(StatutTacheEnum), nullable=False, default=StatutTacheEnum.a_faire)
+    statut = Column(Enum(StatutTacheEnum), nullable=False, default=StatutTacheEnum.a_faire, index=True)  # indexé
     priorite = Column(Enum(PrioriteTacheEnum), nullable=False, default=PrioriteTacheEnum.normale)
     date_echeance = Column(DateTime, nullable=True)

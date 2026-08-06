@@ -10,8 +10,8 @@ from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.core.security import hash_password
 
 
-def get_all(db: Session) -> List[Employee]:
-    return db.query(Employee).all()
+def get_all(db: Session, limit: int = 100, offset: int = 0) -> List[Employee]:
+    return db.query(Employee).offset(offset).limit(limit).all()
 
 
 def get_by_id(employee_id: str, db: Session) -> Employee:

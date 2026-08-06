@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.security import get_current_employee, require_roles
+from app.models.patient import SexeEnum
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, AssocierParentRequest, ChangerStatutRequest
 from app.schemas.patient_statut_historique import PatientStatutHistoriqueResponse, NotesDegradationUpdate
 from app.services import patient_service
@@ -18,11 +19,18 @@ psychologue_or_admin = require_roles("psychologue", "admin")
 @router.get("", response_model=List[PatientResponse])
 def list_patients(
     actif: Optional[bool] = None,
+    sexe: Optional[SexeEnum] = None,
+    age_min: Optional[int] = None,
+    age_max: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
     db: Session = Depends(get_db),
     employee=Depends(get_current_employee),
 ):
-    """Liste les patients. Paramètre optionnel ?actif=true/false pour filtrer."""
-    return patient_service.get_all(employee, db, actif=actif)
+    """Liste les patients. Paramètres optionnels : ?actif=true/false, ?sexe=masculin|feminin, ?age_min=5, ?age_max=12, ?limit=100, ?offset=0."""
+    return patient_service.get_all(
+        employee, db, actif=actif, sexe=sexe, age_min=age_min, age_max=age_max, limit=limit, offset=offset
+    )
 
 
 @router.post("", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)

@@ -11,12 +11,12 @@ from app.schemas.seance import SeanceCreate, SeanceUpdate, PatientPlanningRecurr
 from app.services.access_control_service import get_accessible_patient_ids
 
 
-def get_all(employee, db: Session) -> List[Seance]:
+def get_all(employee, db: Session, limit: int = 100, offset: int = 0) -> List[Seance]:
     patient_ids = get_accessible_patient_ids(employee, db)
     q = db.query(Seance)
     if patient_ids is not None:
         q = q.filter(Seance.patient_id.in_(patient_ids))
-    return q.all()
+    return q.order_by(Seance.date.desc()).offset(offset).limit(limit).all()
 
 
 def get_by_id(seance_id: str, db: Session) -> Seance:

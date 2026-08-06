@@ -1,24 +1,56 @@
 import uuid
+from datetime import date
 from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.patient import Patient
+from app.models.patient import Patient, SexeEnum
 from app.models.patient_parent import PatientParent
 from app.models.dossier_medical import DossierMedical
 from app.schemas.patient import PatientCreate, PatientUpdate, AssocierParentRequest
 from app.services.access_control_service import get_accessible_patient_ids
 
 
-def get_all(employee, db: Session, actif: Optional[bool] = None) -> List[Patient]:
+def _get_max_birth_date(age_min: int) -> date:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - age_min)
+    except ValueError:
+        return today.replace(year=today.year - age_min, day=28)
+
+
+def _get_min_birth_date(age_max: int) -> date:
+    today = date.today()
+    try:
+        return today.replace(year=today.year - age_max - 1)
+    except ValueError:
+        return today.replace(year=today.year - age_max - 1, day=28)
+
+
+def get_all(
+    employee,
+    db: Session,
+    actif: Optional[bool] = None,
+    sexe: Optional[SexeEnum] = None,
+    age_min: Optional[int] = None,
+    age_max: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> List[Patient]:
     patient_ids = get_accessible_patient_ids(employee, db)
     q = db.query(Patient)
     if patient_ids is not None:
         q = q.filter(Patient.id.in_(patient_ids))
     if actif is not None:
         q = q.filter(Patient.est_actif == actif)
-    return q.all()
+    if sexe is not None:
+        q = q.filter(Patient.sexe == sexe)
+    if age_min is not None:
+        q = q.filter(Patient.date_naissance.isnot(None), Patient.date_naissance <= _get_max_birth_date(age_min))
+    if age_max is not None:
+        q = q.filter(Patient.date_naissance.isnot(None), Patient.date_naissance > _get_min_birth_date(age_max))
+    return q.offset(offset).limit(limit).all()
 
 
 

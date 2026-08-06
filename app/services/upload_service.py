@@ -7,7 +7,7 @@ from app.core.config import settings
 
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".mov", ".avi", ".pdf"}
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 Mo — limite raisonnable pour préserver le disque de la VM Oracle Cloud
 
 
 async def save_file(file: UploadFile) -> str:
@@ -26,7 +26,7 @@ async def save_file(file: UploadFile) -> str:
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Fichier trop volumineux (max 50 MB)",
+            detail="Fichier trop volumineux (max 15 Mo)",
         )
 
     upload_dir = settings.UPLOAD_DIR

@@ -11,8 +11,8 @@ router = APIRouter(prefix="/api/taches", tags=["Tâches"])
 
 
 @router.get("", response_model=List[TacheResponse])
-def list_taches(db: Session = Depends(get_db), employee=Depends(get_current_employee)):
-    return tache_service.get_all(employee, db)
+def list_taches(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    return tache_service.get_all(employee, db, limit=limit, offset=offset)
 
 
 @router.post("", response_model=TacheResponse, status_code=status.HTTP_201_CREATED)

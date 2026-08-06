@@ -7,6 +7,10 @@ from app.db.session import Base
 class RoleParentEnum(str, enum.Enum):
     pere = "pere"
     mere = "mere"
+    grand_pere = "grand_pere"
+    grand_mere = "grand_mere"
+    oncle = "oncle"
+    tante = "tante"
     tuteur = "tuteur"
     autre = "autre"
 

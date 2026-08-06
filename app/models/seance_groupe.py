@@ -17,7 +17,7 @@ class SeanceGroupe(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     groupe_id = Column(String, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
     employe_id = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
-    date = Column(Date, nullable=False)
+    date = Column(Date, nullable=False, index=True)  # indexé — filtré fréquemment
     heure_debut = Column(Time, nullable=True)
     heure_fin = Column(Time, nullable=True)
     statut = Column(Enum(StatutSeanceGroupeEnum), nullable=False, default=StatutSeanceGroupeEnum.prevue)

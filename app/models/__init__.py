@@ -7,6 +7,7 @@ from app.models.dossier_medical import DossierMedical
 from app.models.employee_patient_access import EmployeePatientAccess
 from app.models.groupe import Groupe
 from app.models.groupe_planning_recurrent import GroupePlanningRecurrent
+from app.models.groupe_employe import GroupeEmploye  # [NEW] US-M20/US-M24
 from app.models.patient_groupe import PatientGroupe
 from app.models.seance import Seance
 from app.models.seance_employe import SeanceEmploye
@@ -29,6 +30,7 @@ __all__ = [
     "EmployeePatientAccess",
     "Groupe",
     "GroupePlanningRecurrent",
+    "GroupeEmploye",  # [NEW]
     "PatientGroupe",
     "Seance",
     "SeanceEmploye",

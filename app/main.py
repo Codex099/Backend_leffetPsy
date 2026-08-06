@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 # pyrefly: ignore [missing-import]
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -70,6 +71,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Compression GZip des réponses API (réduit la charge réseau sur connexions mobiles faibles)
+# minimum_size=1000 : ne compresse que les réponses ≥ 1 Ko (évite le surcoût sur les petites réponses)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # S'assurer que le dossier d'upload existe avant le montage StaticFiles
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

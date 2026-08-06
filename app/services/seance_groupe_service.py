@@ -9,8 +9,8 @@ from app.models.seance_groupe_participant import SeanceGroupeParticipant
 from app.schemas.seance_groupe import SeanceGroupeCreate, SeanceGroupeUpdate, ParticipantUpdate
 
 
-def get_all(db: Session) -> List[SeanceGroupe]:
-    return db.query(SeanceGroupe).all()
+def get_all(db: Session, limit: int = 100, offset: int = 0) -> List[SeanceGroupe]:
+    return db.query(SeanceGroupe).order_by(SeanceGroupe.date.desc()).offset(offset).limit(limit).all()
 
 
 def get_by_id(seance_id: str, db: Session) -> SeanceGroupe:

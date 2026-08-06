@@ -11,8 +11,8 @@ router = APIRouter(prefix="/api/parents", tags=["Parents"])
 
 
 @router.get("", response_model=List[ParentResponse])
-def list_parents(db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return parent_service.get_all(db)
+def list_parents(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(get_current_employee)):
+    return parent_service.get_all(db, limit=limit, offset=offset)
 
 
 @router.post("", response_model=ParentResponse, status_code=status.HTTP_201_CREATED)

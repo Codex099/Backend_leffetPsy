@@ -11,8 +11,8 @@ router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
 
 @router.get("", response_model=List[EmployeeResponse])
-def list_employees(db: Session = Depends(get_db), _=Depends(require_admin)):
-    return employee_service.get_all(db)
+def list_employees(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(require_admin)):
+    return employee_service.get_all(db, limit=limit, offset=offset)
 
 
 @router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)

@@ -19,8 +19,8 @@ router = APIRouter(tags=["Séances"])
 # ── Séances individuelles ──────────────────────────────────────────────────────
 
 @router.get("/api/seances", response_model=List[SeanceResponse])
-def list_seances(db: Session = Depends(get_db), employee=Depends(get_current_employee)):
-    return seance_service.get_all(employee, db)
+def list_seances(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    return seance_service.get_all(employee, db, limit=limit, offset=offset)
 
 
 @router.post("/api/seances", response_model=SeanceResponse, status_code=status.HTTP_201_CREATED)
