@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.models.patient import Patient, SexeEnum
 from app.models.patient_parent import PatientParent
+from app.models.parent import Parent
 from app.models.dossier_medical import DossierMedical
 from app.schemas.patient import PatientCreate, PatientUpdate, AssocierParentRequest
 from app.services.access_control_service import get_accessible_patient_ids
+
 
 
 def _get_max_birth_date(age_min: int) -> date:
@@ -106,3 +108,30 @@ def associer_parent(patient_id: str, data: AssocierParentRequest, db: Session) -
     db.add(lien)
     db.commit()
     return {"message": "Parent associé avec succès"}
+
+
+def get_parents(patient_id: str, db: Session) -> list:
+    rows = (
+        db.query(PatientParent)
+        .filter(PatientParent.patient_id == patient_id)
+        .all()
+    )
+    res = []
+    for r in rows:
+        parent = db.query(Parent).filter(Parent.id == r.parent_id).first()
+        if parent:
+            res.append({
+                "patient_id": r.patient_id,
+                "parent_id": r.parent_id,
+                "role": r.role,
+                "parent": {
+                    "id": parent.id,
+                    "nom": parent.nom,
+                    "prenom": parent.prenom,
+                    "telephone": parent.telephone,
+                    "etat_civil": parent.etat_civil,
+                    "adresse": parent.adresse
+                }
+            })
+    return res
+

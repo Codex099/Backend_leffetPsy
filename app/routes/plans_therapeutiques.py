@@ -63,6 +63,7 @@ def get_plan(
 
 
 @router.put("/api/plans-therapeutiques/{plan_id}", response_model=PlanTherapeutiqueResponse)
+@router.patch("/api/plans-therapeutiques/{plan_id}", response_model=PlanTherapeutiqueResponse)
 def update_plan(
     plan_id: str,
     data: PlanTherapeutiqueUpdate,
@@ -101,6 +102,7 @@ def add_etape(
 
 
 @router.put("/api/plans-therapeutiques/{plan_id}/etapes/{etape_id}", response_model=EtapeResponse)
+@router.patch("/api/plans-therapeutiques/{plan_id}/etapes/{etape_id}", response_model=EtapeResponse)
 def update_etape(
     plan_id: str,
     etape_id: str,

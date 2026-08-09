@@ -26,6 +26,7 @@ def get_parent(parent_id: str, db: Session = Depends(get_db), _=Depends(get_curr
 
 
 @router.put("/{parent_id}", response_model=ParentResponse)
+@router.patch("/{parent_id}", response_model=ParentResponse)
 def update_parent(parent_id: str, data: ParentUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
     return parent_service.update(parent_id, data, db)
 

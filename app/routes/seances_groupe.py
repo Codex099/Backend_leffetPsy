@@ -26,6 +26,7 @@ def get_seance_groupe(seance_id: str, db: Session = Depends(get_db), _=Depends(g
 
 
 @router.put("/{seance_id}", response_model=SeanceGroupeResponse)
+@router.patch("/{seance_id}", response_model=SeanceGroupeResponse)
 def update_seance_groupe(seance_id: str, data: SeanceGroupeUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
     return seance_groupe_service.update(seance_id, data, db)
 
@@ -36,5 +37,6 @@ def delete_seance_groupe(seance_id: str, db: Session = Depends(get_db), _=Depend
 
 
 @router.put("/{seance_id}/participants/{patient_id}", response_model=ParticipantResponse)
+@router.patch("/{seance_id}/participants/{patient_id}", response_model=ParticipantResponse)
 def update_participant(seance_id: str, patient_id: str, data: ParticipantUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     return seance_groupe_service.update_participant(seance_id, patient_id, data, employee.id, db)

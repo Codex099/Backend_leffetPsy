@@ -17,6 +17,7 @@ def get_dossier(patient_id: str, db: Session = Depends(get_db), employee=Depends
 
 
 @router.put("/{patient_id}/dossier-medical", response_model=DossierMedicalResponse)
+@router.patch("/{patient_id}/dossier-medical", response_model=DossierMedicalResponse)
 def update_dossier(patient_id: str, data: DossierMedicalUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     check_patient_access(patient_id, employee, db)
     return dossier_medical_service.update(patient_id, data, employee.id, db)

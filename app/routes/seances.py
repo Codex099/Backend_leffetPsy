@@ -37,6 +37,7 @@ def get_seance(seance_id: str, db: Session = Depends(get_db), employee=Depends(g
 
 
 @router.put("/api/seances/{seance_id}", response_model=SeanceResponse)
+@router.patch("/api/seances/{seance_id}", response_model=SeanceResponse)
 def update_seance(seance_id: str, data: SeanceUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     seance = seance_service.get_by_id(seance_id, db)
     check_patient_access(seance.patient_id, employee, db)

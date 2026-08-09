@@ -26,6 +26,7 @@ def get_evenement(event_id: str, db: Session = Depends(get_db), _=Depends(get_cu
 
 
 @router.put("/{event_id}", response_model=EvenementCalendrierResponse)
+@router.patch("/{event_id}", response_model=EvenementCalendrierResponse)
 def update_evenement(event_id: str, data: EvenementCalendrierUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
     return calendrier_service.update(event_id, data, db)
 

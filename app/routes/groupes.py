@@ -31,6 +31,7 @@ def get_groupe(groupe_id: str, db: Session = Depends(get_db), _=Depends(get_curr
 
 
 @router.put("/{groupe_id}", response_model=GroupeResponse)
+@router.patch("/{groupe_id}", response_model=GroupeResponse)
 def update_groupe(groupe_id: str, data: GroupeUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
     return groupe_service.update(groupe_id, data, db)
 

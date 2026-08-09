@@ -44,6 +44,7 @@ def get_patient(patient_id: str, db: Session = Depends(get_db), employee=Depends
 
 
 @router.put("/{patient_id}", response_model=PatientResponse)
+@router.patch("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: str, data: PatientUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     check_patient_access(patient_id, employee, db)
     return patient_service.update(patient_id, data, db)
@@ -61,9 +62,17 @@ def associer_parent(patient_id: str, data: AssocierParentRequest, db: Session = 
     return patient_service.associer_parent(patient_id, data, db)
 
 
+@router.get("/{patient_id}/parents")
+def get_patient_parents(patient_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    check_patient_access(patient_id, employee, db)
+    return patient_service.get_parents(patient_id, db)
+
+
+
 # ─── Statut actif / inactif ───────────────────────────────────────────────────
 
 @router.put("/{patient_id}/statut", response_model=PatientResponse)
+@router.patch("/{patient_id}/statut", response_model=PatientResponse)
 def changer_statut_patient(
     patient_id: str,
     data: ChangerStatutRequest,
@@ -93,6 +102,7 @@ def get_statut_historique(
 
 
 @router.put("/{patient_id}/statut-historique/{historique_id}", response_model=PatientStatutHistoriqueResponse)
+@router.patch("/{patient_id}/statut-historique/{historique_id}", response_model=PatientStatutHistoriqueResponse)
 def update_note_degradation(
     patient_id: str,
     historique_id: str,

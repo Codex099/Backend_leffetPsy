@@ -26,6 +26,7 @@ def get_tache(tache_id: str, db: Session = Depends(get_db), _=Depends(get_curren
 
 
 @router.put("/{tache_id}", response_model=TacheResponse)
+@router.patch("/{tache_id}", response_model=TacheResponse)
 def update_tache(tache_id: str, data: TacheUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
     return tache_service.update(tache_id, data, db)
 

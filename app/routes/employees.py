@@ -26,6 +26,7 @@ def get_employee(employee_id: str, db: Session = Depends(get_db), _=Depends(requ
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
+@router.patch("/{employee_id}", response_model=EmployeeResponse)
 def update_employee(employee_id: str, data: EmployeeUpdate, db: Session = Depends(get_db), _=Depends(require_admin)):
     return employee_service.update(employee_id, data, db)
 
