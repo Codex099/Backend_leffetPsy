@@ -2,6 +2,7 @@ import uuid
 import enum
 
 from sqlalchemy import Column, String, Date, Enum, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -34,3 +35,10 @@ class PlanTherapeutique(Base):
     date_debut = Column(Date, nullable=True)
     date_fin = Column(Date, nullable=True)
     cree_par = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+
+    etapes = relationship(
+        "EtapePlanTherapeutique",
+        backref="plan",
+        cascade="all, delete-orphan",
+        order_by="EtapePlanTherapeutique.ordre",
+    )

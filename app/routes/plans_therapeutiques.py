@@ -89,6 +89,17 @@ def delete_plan(
 
 # ─── Étapes ───────────────────────────────────────────────────────────────────
 
+@router.get("/api/plans-therapeutiques/{plan_id}/etapes", response_model=List[EtapeResponse])
+def list_etapes(
+    plan_id: str,
+    db: Session = Depends(get_db),
+    employee=Depends(psychologue_or_admin),
+):
+    plan = plan_therapeutique_service.get_plan_by_id(plan_id, db)
+    check_patient_access(plan.patient_id, employee, db)
+    return plan.etapes
+
+
 @router.post("/api/plans-therapeutiques/{plan_id}/etapes", response_model=EtapeResponse, status_code=status.HTTP_201_CREATED)
 def add_etape(
     plan_id: str,

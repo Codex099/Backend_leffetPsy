@@ -43,6 +43,7 @@ class PlanTherapeutiqueResponse(PlanTherapeutiqueBase):
     id: str
     patient_id: str
     cree_par: Optional[str] = None
+    etapes: List[EtapeResponse] = []
 
     model_config = {"from_attributes": True}
 
