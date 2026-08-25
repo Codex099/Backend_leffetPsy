@@ -1,15 +1,24 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.parent import Parent
 from app.schemas.parent import ParentCreate, ParentUpdate
 
 
-def get_all(db: Session, limit: int = 100, offset: int = 0) -> List[Parent]:
-    return db.query(Parent).offset(offset).limit(limit).all()
+def get_all(db: Session, search: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[Parent]:
+    q = db.query(Parent)
+    if search:
+        motif = f"%{search.strip()}%"
+        q = q.filter(or_(
+            Parent.nom.ilike(motif),
+            Parent.prenom.ilike(motif),
+            Parent.telephone.ilike(motif),
+        ))
+    return q.order_by(Parent.nom, Parent.prenom).offset(offset).limit(limit).all()
 
 
 def get_by_id(parent_id: str, db: Session) -> Parent:

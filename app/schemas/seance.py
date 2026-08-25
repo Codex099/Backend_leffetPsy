@@ -38,6 +38,10 @@ class SeanceResponse(SeanceBase):
     reponses_questionnaire: Optional[Any] = None
     medias: Optional[Any] = None
 
+    # Patient imbriqué (enrichment_service) : l'agenda et le dashboard affichent
+    # le nom du patient, pas son UUID.
+    patient: Optional[Any] = None
+
     model_config = {"from_attributes": True}
 
 

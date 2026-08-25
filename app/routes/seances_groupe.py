@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional
+from datetime import date as date_type
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -11,8 +12,31 @@ router = APIRouter(prefix="/api/seances-groupe", tags=["Séances de Groupe"])
 
 
 @router.get("", response_model=List[SeanceGroupeResponse])
-def list_seances_groupe(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return seance_groupe_service.get_all(db, limit=limit, offset=offset)
+def list_seances_groupe(
+    groupe_id: Optional[str] = None,
+    employe_id: Optional[str] = None,
+    patient_id: Optional[str] = None,
+    date: Optional[date_type] = None,
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_employee),
+):
+    """
+    Liste les séances de groupe, groupe / animateur / participants imbriqués.
+
+    Filtres optionnels : ?groupe_id=, ?employe_id=, ?patient_id= (séances où ce
+    patient est participant), ?date=YYYY-MM-DD, ?date_debut= & ?date_fin=,
+    ?limit=, ?offset=.
+    """
+    return seance_groupe_service.get_all(
+        db,
+        groupe_id=groupe_id, employe_id=employe_id, patient_id=patient_id,
+        date=date, date_debut=date_debut, date_fin=date_fin,
+        limit=limit, offset=offset,
+    )
 
 
 @router.post("", response_model=SeanceGroupeResponse, status_code=status.HTTP_201_CREATED)
@@ -22,7 +46,7 @@ def create_seance_groupe(data: SeanceGroupeCreate, db: Session = Depends(get_db)
 
 @router.get("/{seance_id}", response_model=SeanceGroupeResponse)
 def get_seance_groupe(seance_id: str, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return seance_groupe_service.get_by_id(seance_id, db)
+    return seance_groupe_service.get_detail(seance_id, db)
 
 
 @router.put("/{seance_id}", response_model=SeanceGroupeResponse)

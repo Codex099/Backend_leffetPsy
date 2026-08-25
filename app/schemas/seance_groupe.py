@@ -29,6 +29,12 @@ class SeanceGroupeUpdate(BaseModel):
 class SeanceGroupeResponse(SeanceGroupeBase):
     id: str
 
+    # Objets imbriqués (enrichment_service) : nom du groupe, animateur et
+    # liste des participants avec leur patient.
+    groupe: Optional[Any] = None
+    employe: Optional[Any] = None
+    participants: Optional[Any] = None
+
     model_config = {"from_attributes": True}
 
 
@@ -43,5 +49,9 @@ class ParticipantResponse(ParticipantUpdate):
     seance_groupe_id: str
     patient_id: str
     redige_par: Optional[str] = None
+
+    # Patient imbriqué : les cartes de suivi du compte-rendu de groupe
+    # affichent le nom du participant.
+    patient: Optional[Any] = None
 
     model_config = {"from_attributes": True}

@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.security import get_current_employee
+from app.models.tache import StatutTacheEnum
 from app.schemas.tache import TacheCreate, TacheUpdate, TacheResponse
 from app.services import tache_service
 
@@ -11,8 +12,27 @@ router = APIRouter(prefix="/api/taches", tags=["Tâches"])
 
 
 @router.get("", response_model=List[TacheResponse])
-def list_taches(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
-    return tache_service.get_all(employee, db, limit=limit, offset=offset)
+def list_taches(
+    assigne_a_moi: Optional[bool] = None,
+    statut: Optional[StatutTacheEnum] = None,
+    patient_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    employee=Depends(get_current_employee),
+):
+    """
+    Liste les tâches visibles par l'employé, patient et assigné imbriqués.
+
+    Filtres optionnels : ?assigne_a_moi=true (sans effet pour un non-admin,
+    déjà restreint à ses propres tâches), ?statut=a_faire|en_cours|fait,
+    ?patient_id=, ?limit=, ?offset=.
+    """
+    return tache_service.get_all(
+        employee, db,
+        assigne_a_moi=assigne_a_moi, statut=statut, patient_id=patient_id,
+        limit=limit, offset=offset,
+    )
 
 
 @router.post("", response_model=TacheResponse, status_code=status.HTTP_201_CREATED)

@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional
+from datetime import date as date_type
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.security import get_current_employee
+from app.models.seance import StatutSeanceEnum
 from app.schemas.seance import (
     SeanceCreate, SeanceUpdate, SeanceResponse,
     PatientPlanningRecurrentCreate, PatientPlanningRecurrentResponse,
@@ -19,8 +21,29 @@ router = APIRouter(tags=["Séances"])
 # ── Séances individuelles ──────────────────────────────────────────────────────
 
 @router.get("/api/seances", response_model=List[SeanceResponse])
-def list_seances(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
-    return seance_service.get_all(employee, db, limit=limit, offset=offset)
+def list_seances(
+    patient_id: Optional[str] = None,
+    date: Optional[date_type] = None,
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    statut: Optional[StatutSeanceEnum] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    employee=Depends(get_current_employee),
+):
+    """
+    Liste les séances accessibles à l'employé, patient imbriqué compris.
+
+    Filtres optionnels : ?patient_id=, ?date=YYYY-MM-DD (jour précis),
+    ?date_debut= & ?date_fin= (intervalle pour l'agenda),
+    ?statut=prevue|faite|annulee|retardee, ?limit=, ?offset=.
+    """
+    return seance_service.get_all(
+        employee, db,
+        patient_id=patient_id, date=date, date_debut=date_debut, date_fin=date_fin,
+        statut=statut, limit=limit, offset=offset,
+    )
 
 
 @router.post("/api/seances", response_model=SeanceResponse, status_code=status.HTTP_201_CREATED)

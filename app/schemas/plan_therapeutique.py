@@ -13,16 +13,18 @@ class PlanTherapeutiqueBase(BaseModel):
     date_debut: Optional[date] = None
     date_fin: Optional[date] = None
 
+
+class PlanTherapeutiqueCreate(PlanTherapeutiqueBase):
+    # Règle de rejet portée par Create, pas par la classe Base :
+    # PlanTherapeutiqueResponse hérite de ce socle et Pydantic rejoue les
+    # validateurs à la sérialisation — une règle ici ferait échouer la liste
+    # des plans sur une seule ligne mal formée en base.
     @field_validator("titre", mode="before")
     @classmethod
     def validate_titre(cls, v: Any) -> Any:
         if v is None or (isinstance(v, str) and not v.strip()):
             raise ValueError("Le titre ne peut pas être vide")
         return v.strip() if isinstance(v, str) else v
-
-
-class PlanTherapeutiqueCreate(PlanTherapeutiqueBase):
-    pass
 
 
 class PlanTherapeutiqueUpdate(BaseModel):
@@ -56,16 +58,15 @@ class EtapeBase(BaseModel):
     statut: StatutEtapeEnum = StatutEtapeEnum.a_faire
     ordre: int
 
+
+class EtapeCreate(EtapeBase):
+    # Idem : rejet sur Create uniquement, EtapeResponse hérite d'EtapeBase.
     @field_validator("titre", mode="before")
     @classmethod
     def validate_titre(cls, v: Any) -> Any:
         if v is None or (isinstance(v, str) and not v.strip()):
             raise ValueError("Le titre de l'étape ne peut pas être vide")
         return v.strip() if isinstance(v, str) else v
-
-
-class EtapeCreate(EtapeBase):
-    pass
 
 
 class EtapeUpdate(BaseModel):

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -11,8 +11,15 @@ router = APIRouter(prefix="/api/parents", tags=["Parents"])
 
 
 @router.get("", response_model=List[ParentResponse])
-def list_parents(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return parent_service.get_all(db, limit=limit, offset=offset)
+def list_parents(
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_employee),
+):
+    """Liste les parents. Paramètres optionnels : ?search=nom, prénom ou téléphone, ?limit=100, ?offset=0."""
+    return parent_service.get_all(db, search=search, limit=limit, offset=offset)
 
 
 @router.post("", response_model=ParentResponse, status_code=status.HTTP_201_CREATED)

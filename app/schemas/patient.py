@@ -14,6 +14,12 @@ class PatientBase(BaseModel):
     nombre_freres_soeurs: Optional[int] = None
     ordre_naissance: Optional[int] = None
 
+
+class PatientCreate(PatientBase):
+    # Règle de rejet portée par Create, pas par PatientBase : PatientResponse
+    # hérite de PatientBase et Pydantic rejoue les validateurs à la
+    # sérialisation — une règle ici ferait échouer GET /api/patients sur une
+    # seule ligne mal formée en base.
     @field_validator("nom", "prenom", mode="before")
     @classmethod
     def validate_non_empty_str(cls, v: Any, info) -> Any:
@@ -21,10 +27,6 @@ class PatientBase(BaseModel):
         if v is None or (isinstance(v, str) and not v.strip()):
             raise ValueError(f"Le champ '{field_name}' ne peut pas être vide")
         return v.strip() if isinstance(v, str) else v
-
-
-class PatientCreate(PatientBase):
-    pass
 
 
 class PatientUpdate(BaseModel):

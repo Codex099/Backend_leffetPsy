@@ -4,19 +4,19 @@ from app.models.employee import RoleEmployeEnum
 
 
 class EmployeeBase(BaseModel):
+    """
+    Forme commune à l'entrée (Create) et à la sortie (Response).
+
+    Ne porte que des *conversions* (normalisation de casse), jamais de règle de
+    rejet : `EmployeeResponse` hérite de ce socle et Pydantic rejoue les
+    validateurs à la sérialisation — une règle de rejet ici ferait échouer tout
+    GET /api/employees sur une seule ligne mal formée en base.
+    """
     nom: str
     prenom: str
     telephone: str
     username: str
     role: RoleEmployeEnum
-
-    @field_validator("nom", "prenom", "username", "telephone", mode="before")
-    @classmethod
-    def validate_non_empty_str(cls, v: Any, info) -> Any:
-        field_name = info.field_name
-        if v is None or (isinstance(v, str) and not v.strip()):
-            raise ValueError(f"Le champ '{field_name}' ne peut pas être vide")
-        return v.strip() if isinstance(v, str) else v
 
     @field_validator("role", mode="before")
     @classmethod
@@ -31,6 +31,14 @@ class EmployeeCreate(EmployeeBase):
     # Le client envoie le mot de passe en clair — le backend le hache avant stockage.
     # Les deux clés "password" et "mot_de_passe" sont acceptées (alias).
     password: str
+
+    @field_validator("nom", "prenom", "username", "telephone", mode="before")
+    @classmethod
+    def validate_non_empty_str(cls, v: Any, info) -> Any:
+        field_name = info.field_name
+        if v is None or (isinstance(v, str) and not v.strip()):
+            raise ValueError(f"Le champ '{field_name}' ne peut pas être vide")
+        return v.strip() if isinstance(v, str) else v
 
     @field_validator("password", mode="before")
     @classmethod

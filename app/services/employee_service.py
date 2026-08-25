@@ -1,7 +1,8 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.employee import Employee
@@ -10,8 +11,17 @@ from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.core.security import hash_password
 
 
-def get_all(db: Session, limit: int = 100, offset: int = 0) -> List[Employee]:
-    return db.query(Employee).offset(offset).limit(limit).all()
+def get_all(db: Session, search: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[Employee]:
+    q = db.query(Employee)
+    if search:
+        motif = f"%{search.strip()}%"
+        q = q.filter(or_(
+            Employee.nom.ilike(motif),
+            Employee.prenom.ilike(motif),
+            Employee.telephone.ilike(motif),
+            Employee.username.ilike(motif),
+        ))
+    return q.order_by(Employee.nom, Employee.prenom).offset(offset).limit(limit).all()
 
 
 def get_by_id(employee_id: str, db: Session) -> Employee:

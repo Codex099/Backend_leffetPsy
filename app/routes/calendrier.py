@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional
+from datetime import date as date_type
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -11,8 +12,16 @@ router = APIRouter(prefix="/api/calendrier", tags=["Calendrier"])
 
 
 @router.get("", response_model=List[EvenementCalendrierResponse])
-def list_evenements(db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return calendrier_service.get_all(db)
+def list_evenements(
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    limit: int = 500,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_employee),
+):
+    """Événements du calendrier. Paramètres optionnels : ?date_debut=YYYY-MM-DD, ?date_fin=YYYY-MM-DD, ?limit=500, ?offset=0."""
+    return calendrier_service.get_all(db, date_debut=date_debut, date_fin=date_fin, limit=limit, offset=offset)
 
 
 @router.post("", response_model=EvenementCalendrierResponse, status_code=status.HTTP_201_CREATED)

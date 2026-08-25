@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -11,8 +11,15 @@ router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
 
 @router.get("", response_model=List[EmployeeResponse])
-def list_employees(limit: int = 100, offset: int = 0, db: Session = Depends(get_db), _=Depends(require_admin)):
-    return employee_service.get_all(db, limit=limit, offset=offset)
+def list_employees(
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Liste les employés. Paramètres optionnels : ?search=nom, prénom, téléphone ou username, ?limit=100, ?offset=0."""
+    return employee_service.get_all(db, search=search, limit=limit, offset=offset)
 
 
 @router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)

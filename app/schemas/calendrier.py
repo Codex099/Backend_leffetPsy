@@ -26,17 +26,19 @@ def _parse_date(v: Any) -> Any:
 
 
 class EvenementCalendrierBase(BaseModel):
+    """
+    Forme commune à l'entrée (Create) et à la sortie (Response).
+
+    Ne contient que des *conversions* (parsing de date), jamais de règle de
+    rejet : ce socle est hérité par `EvenementCalendrierResponse`, et Pydantic
+    rejoue les validateurs à la sérialisation. Une règle de rejet placée ici
+    ferait échouer toute la liste sur une seule ligne mal formée en base
+    (500 ResponseValidationError). Les rejets vivent donc sur Create/Update.
+    """
     titre: str
     description: Optional[str] = None
     date: date
     notifier_avant_jours: Optional[int] = None
-
-    @field_validator("titre", mode="before")
-    @classmethod
-    def validate_titre(cls, v: Any) -> Any:
-        if v is None or (isinstance(v, str) and not v.strip()):
-            raise ValueError("Le titre ne peut pas être vide")
-        return v.strip() if isinstance(v, str) else v
 
     @field_validator("date", mode="before")
     @classmethod
@@ -45,7 +47,12 @@ class EvenementCalendrierBase(BaseModel):
 
 
 class EvenementCalendrierCreate(EvenementCalendrierBase):
-    pass
+    @field_validator("titre", mode="before")
+    @classmethod
+    def validate_titre(cls, v: Any) -> Any:
+        if v is None or (isinstance(v, str) and not v.strip()):
+            raise ValueError("Le titre ne peut pas être vide")
+        return v.strip() if isinstance(v, str) else v
 
 
 class EvenementCalendrierUpdate(BaseModel):

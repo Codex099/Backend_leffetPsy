@@ -10,16 +10,18 @@ class GroupeBase(BaseModel):
     type_planning: TypePlanningEnum
     description: Optional[str] = None
 
+
+class GroupeCreate(GroupeBase):
+    # Règle de rejet portée par Create, pas par GroupeBase : GroupeResponse
+    # hérite de GroupeBase et Pydantic rejoue les validateurs à la
+    # sérialisation — une règle ici ferait échouer GET /api/groupes sur une
+    # seule ligne mal formée en base.
     @field_validator("nom", mode="before")
     @classmethod
     def validate_nom(cls, v: Any) -> Any:
         if v is None or (isinstance(v, str) and not v.strip()):
             raise ValueError("Le nom du groupe ne peut pas être vide")
         return v.strip() if isinstance(v, str) else v
-
-
-class GroupeCreate(GroupeBase):
-    pass
 
 
 class GroupeUpdate(BaseModel):
@@ -37,6 +39,12 @@ class GroupeUpdate(BaseModel):
 
 class GroupeResponse(GroupeBase):
     id: str
+
+    # Collections imbriquées (enrichment_service) : la liste et le détail d'un
+    # groupe affichent ses membres, son planning fixe et ses responsables.
+    patients: Optional[Any] = None
+    planning_recurrent: Optional[Any] = None
+    employees: Optional[Any] = None
 
     model_config = {"from_attributes": True}
 

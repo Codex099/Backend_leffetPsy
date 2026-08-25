@@ -1,29 +1,58 @@
 import uuid
+from datetime import date as date_type
 from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.seance import Seance
+from app.models.seance import Seance, StatutSeanceEnum
 from app.models.seance_employe import SeanceEmploye
 from app.models.patient_planning_recurrent import PatientPlanningRecurrent
 from app.schemas.seance import SeanceCreate, SeanceUpdate, PatientPlanningRecurrentCreate
+from app.services import enrichment_service
 from app.services.access_control_service import get_accessible_patient_ids
 
 
-def get_all(employee, db: Session, limit: int = 100, offset: int = 0) -> List[Seance]:
+def _enrich(target, db: Session):
+    """Attache le patient : l'agenda et le dashboard affichent son nom, pas l'UUID."""
+    return enrichment_service.attach_patient(target, db)
+
+
+def get_all(
+    employee,
+    db: Session,
+    patient_id: Optional[str] = None,
+    date: Optional[date_type] = None,
+    date_debut: Optional[date_type] = None,
+    date_fin: Optional[date_type] = None,
+    statut: Optional[StatutSeanceEnum] = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> List[Seance]:
     patient_ids = get_accessible_patient_ids(employee, db)
     q = db.query(Seance)
+    # Le périmètre d'accès s'applique toujours : les filtres s'y ajoutent.
     if patient_ids is not None:
         q = q.filter(Seance.patient_id.in_(patient_ids))
-    return q.order_by(Seance.date.desc()).offset(offset).limit(limit).all()
+    if patient_id is not None:
+        q = q.filter(Seance.patient_id == patient_id)
+    if date is not None:
+        q = q.filter(Seance.date == date)
+    if date_debut is not None:
+        q = q.filter(Seance.date >= date_debut)
+    if date_fin is not None:
+        q = q.filter(Seance.date <= date_fin)
+    if statut is not None:
+        q = q.filter(Seance.statut == statut)
+    seances = q.order_by(Seance.date.desc()).offset(offset).limit(limit).all()
+    return _enrich(seances, db)
 
 
 def get_by_id(seance_id: str, db: Session) -> Seance:
     s = db.query(Seance).filter(Seance.id == seance_id).first()
     if not s:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Séance introuvable")
-    return s
+    return _enrich(s, db)
 
 
 def create(data: SeanceCreate, db: Session) -> Seance:
@@ -37,7 +66,7 @@ def create(data: SeanceCreate, db: Session) -> Seance:
 
     db.commit()
     db.refresh(seance)
-    return seance
+    return _enrich(seance, db)
 
 
 def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
@@ -53,7 +82,7 @@ def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
 
     db.commit()
     db.refresh(seance)
-    return seance
+    return _enrich(seance, db)
 
 
 def delete(seance_id: str, db: Session) -> None:

@@ -6,15 +6,22 @@ from sqlalchemy.orm import Session
 
 from app.models.note_patient import NotePatient
 from app.schemas.note_patient import NotePatientCreate
+from app.services import enrichment_service
+
+
+def _enrich(target, db: Session):
+    """Attache l'auteur : la note affiche le nom du rédacteur, pas son UUID."""
+    return enrichment_service.attach_employee(target, db, fk_attr="employe_id", key="auteur")
 
 
 def get_by_patient(patient_id: str, db: Session) -> List[NotePatient]:
-    return (
+    notes = (
         db.query(NotePatient)
         .filter(NotePatient.patient_id == patient_id)
         .order_by(NotePatient.date_creation.desc())
         .all()
     )
+    return _enrich(notes, db)
 
 
 def create(patient_id: str, data: NotePatientCreate, employee_id: str, db: Session) -> NotePatient:
@@ -33,7 +40,7 @@ def create(patient_id: str, data: NotePatientCreate, employee_id: str, db: Sessi
     db.add(note)
     db.commit()
     db.refresh(note)
-    return note
+    return _enrich(note, db)
 
 
 def delete(note_id: str, employee, db: Session) -> None:

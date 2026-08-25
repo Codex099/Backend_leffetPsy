@@ -10,6 +10,12 @@ class ParentBase(BaseModel):
     etat_civil: EtatCivilEnum
     adresse: Optional[str] = None
 
+
+class ParentCreate(ParentBase):
+    # Règle de rejet portée par Create, pas par ParentBase : ParentResponse
+    # hérite de ParentBase et Pydantic rejoue les validateurs à la
+    # sérialisation — une règle ici ferait échouer GET /api/parents sur une
+    # seule ligne mal formée en base.
     @field_validator("nom", "prenom", "telephone", mode="before")
     @classmethod
     def validate_non_empty_str(cls, v: Any, info) -> Any:
@@ -17,10 +23,6 @@ class ParentBase(BaseModel):
         if v is None or (isinstance(v, str) and not v.strip()):
             raise ValueError(f"Le champ '{field_name}' ne peut pas être vide")
         return v.strip() if isinstance(v, str) else v
-
-
-class ParentCreate(ParentBase):
-    pass
 
 
 class ParentUpdate(BaseModel):
