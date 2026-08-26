@@ -89,3 +89,33 @@ def require_roles(*roles: str):
             )
         return employee
     return dependency
+
+
+# ── MCP Token dependency ──────────────────────────────────────────────────────
+
+def get_current_employee_from_mcp_token(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    """
+    Dependency FastAPI pour les routes /api/mcp/*.
+    Authentifie un employé via son token API MCP personnel (Bearer <mcp_token>).
+    Le token est résolu via mcp_service.verify_mcp_token.
+    """
+    from app.services.mcp_service import verify_mcp_token
+    return verify_mcp_token(token, db)
+
+
+def require_mcp_roles(*roles: str):
+    """
+    Factory de dépendance MCP : authentifie via token MCP ET vérifie le rôle.
+    Usage : Depends(require_mcp_roles("psychologue", "admin"))
+    """
+    def dependency(employee=Depends(get_current_employee_from_mcp_token)):
+        if employee.role not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Accès MCP réservé aux rôles : {', '.join(roles)}",
+            )
+        return employee
+    return dependency

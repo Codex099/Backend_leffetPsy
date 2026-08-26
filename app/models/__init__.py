@@ -20,6 +20,7 @@ from app.models.tache import Tache
 from app.models.evenement_calendrier import EvenementCalendrier
 from app.models.note_patient import NotePatient
 from app.models.patient_statut_historique import PatientStatutHistorique  # [NEW]
+from app.models.mcp_token import McpToken  # [NEW] MCP Agent IA
 
 __all__ = [
     "Parent",
@@ -43,5 +44,6 @@ __all__ = [
     "EvenementCalendrier",
     "NotePatient",
     "PatientStatutHistorique",  # [NEW]
+    "McpToken",  # [NEW] MCP Agent IA
 ]
 

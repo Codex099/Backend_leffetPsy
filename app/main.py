@@ -28,6 +28,7 @@ from app.routes import (
     plans_therapeutiques,
     notes_patients,
     uploads,
+    mcp,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -97,6 +98,7 @@ app.include_router(calendrier.router)
 app.include_router(plans_therapeutiques.router)
 app.include_router(notes_patients.router)
 app.include_router(uploads.router)
+app.include_router(mcp.router)
 
 
 @app.get("/api/health", tags=["Health"])
