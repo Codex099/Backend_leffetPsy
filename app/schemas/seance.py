@@ -41,6 +41,7 @@ class SeanceResponse(SeanceBase):
     # Patient imbriqué (enrichment_service) : l'agenda et le dashboard affichent
     # le nom du patient, pas son UUID.
     patient: Optional[Any] = None
+    employe_ids: Optional[List[str]] = []
 
     model_config = {"from_attributes": True}
 
@@ -52,8 +53,8 @@ class PatientPlanningRecurrentCreate(BaseModel):
     date_debut: date
     date_fin: Optional[date] = None
     employe_id: Optional[str] = None
-    mode_generation: ModeGenerationEnum
-    horizon_jours: Optional[int] = None
+    mode_generation: ModeGenerationEnum = ModeGenerationEnum.manuel
+    horizon_jours: Optional[int] = 28
 
 
 class PatientPlanningRecurrentResponse(PatientPlanningRecurrentCreate):

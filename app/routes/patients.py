@@ -51,7 +51,7 @@ def update_patient(patient_id: str, data: PatientUpdate, db: Session = Depends(g
 
 
 @router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_patient(patient_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+def delete_patient(patient_id: str, db: Session = Depends(get_db), employee=Depends(require_roles("admin"))):
     check_patient_access(patient_id, employee, db)
     patient_service.delete(patient_id, db)
 
@@ -66,6 +66,12 @@ def associer_parent(patient_id: str, data: AssocierParentRequest, db: Session = 
 def get_patient_parents(patient_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     check_patient_access(patient_id, employee, db)
     return patient_service.get_parents(patient_id, db)
+
+
+@router.delete("/{patient_id}/parents/{parent_id}", status_code=status.HTTP_204_NO_CONTENT)
+def dissocier_parent(patient_id: str, parent_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    check_patient_access(patient_id, employee, db)
+    patient_service.dissocier_parent(patient_id, parent_id, db)
 
 
 

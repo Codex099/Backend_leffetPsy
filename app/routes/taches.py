@@ -37,7 +37,7 @@ def list_taches(
 
 @router.post("", response_model=TacheResponse, status_code=status.HTTP_201_CREATED)
 def create_tache(data: TacheCreate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
-    return tache_service.create(data, employee.id, db)
+    return tache_service.create(data, employee, db)
 
 
 @router.get("/{tache_id}", response_model=TacheResponse)
@@ -47,10 +47,10 @@ def get_tache(tache_id: str, db: Session = Depends(get_db), _=Depends(get_curren
 
 @router.put("/{tache_id}", response_model=TacheResponse)
 @router.patch("/{tache_id}", response_model=TacheResponse)
-def update_tache(tache_id: str, data: TacheUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return tache_service.update(tache_id, data, db)
+def update_tache(tache_id: str, data: TacheUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    return tache_service.update(tache_id, data, employee, db)
 
 
 @router.delete("/{tache_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tache(tache_id: str, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    tache_service.delete(tache_id, db)
+def delete_tache(tache_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    tache_service.delete(tache_id, employee, db)

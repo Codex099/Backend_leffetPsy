@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -23,8 +23,26 @@ def list_parents(
 
 
 @router.post("", response_model=ParentResponse, status_code=status.HTTP_201_CREATED)
-def create_parent(data: ParentCreate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return parent_service.create(data, db)
+def create_parent(
+    data: ParentCreate,
+    find_existing: bool = False,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_employee),
+):
+    return parent_service.create(data, db, find_existing=find_existing)
+
+
+@router.get("/by-phone/{telephone}", response_model=ParentResponse)
+def get_parent_by_phone(telephone: str, db: Session = Depends(get_db), _=Depends(get_current_employee)):
+    parent = parent_service.get_by_telephone(telephone, db)
+    if not parent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent introuvable pour ce numéro")
+    return parent
+
+
+@router.get("/{parent_id}/patients")
+def get_parent_patients(parent_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    return parent_service.get_patients_for_parent(parent_id, employee, db)
 
 
 @router.get("/{parent_id}", response_model=ParentResponse)

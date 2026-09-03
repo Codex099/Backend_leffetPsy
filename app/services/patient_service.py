@@ -95,19 +95,34 @@ def associer_parent(patient_id: str, data: AssocierParentRequest, db: Session) -
     # Vérifier que le patient existe
     get_by_id(patient_id, db)
 
-    # Éviter les doublons
+    # Si déjà associé, mettre à jour son rôle au lieu d'échouer avec 409
     existing = (
         db.query(PatientParent)
         .filter(PatientParent.patient_id == patient_id, PatientParent.parent_id == data.parent_id)
         .first()
     )
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Parent déjà associé")
+        existing.role = data.role
+        db.commit()
+        return {"message": "Rôle du parent mis à jour avec succès", "updated": True}
 
     lien = PatientParent(patient_id=patient_id, parent_id=data.parent_id, role=data.role)
     db.add(lien)
     db.commit()
-    return {"message": "Parent associé avec succès"}
+    return {"message": "Parent associé avec succès", "created": True}
+
+
+def dissocier_parent(patient_id: str, parent_id: str, db: Session) -> None:
+    get_by_id(patient_id, db)
+    lien = (
+        db.query(PatientParent)
+        .filter(PatientParent.patient_id == patient_id, PatientParent.parent_id == parent_id)
+        .first()
+    )
+    if not lien:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Association introuvable")
+    db.delete(lien)
+    db.commit()
 
 
 def get_parents(patient_id: str, db: Session) -> list:

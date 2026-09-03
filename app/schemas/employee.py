@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, List
 from pydantic import BaseModel, field_validator
 from app.models.employee import RoleEmployeEnum
 
@@ -76,10 +76,17 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeeResponse(EmployeeBase):
     id: str
+    patients_assignes_ids: Optional[List[str]] = []
     # Le champ password_hash n'est JAMAIS exposé dans la réponse API.
 
     model_config = {"from_attributes": True}
 
 
 class AssignPatientRequest(BaseModel):
-    patient_id: str
+    patient_id: Optional[str] = None
+    patient_ids: Optional[List[str]] = None
+
+
+class GlobalVisibilityRequest(BaseModel):
+    action: str  # "grant_all" | "revoke_all"
+    employee_ids: Optional[List[str]] = None

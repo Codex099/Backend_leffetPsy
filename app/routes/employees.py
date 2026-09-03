@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.core.security import require_admin
-from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse, AssignPatientRequest
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse, AssignPatientRequest, GlobalVisibilityRequest
 from app.services import employee_service
 
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
@@ -45,4 +45,16 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db), _=Depends(r
 
 @router.post("/{employee_id}/patients", status_code=status.HTTP_201_CREATED)
 def assign_patient(employee_id: str, data: AssignPatientRequest, db: Session = Depends(get_db), _=Depends(require_admin)):
-    return employee_service.assign_patient(employee_id, data.patient_id, db)
+    return employee_service.assign_patient(employee_id, data, db)
+
+
+@router.get("/{employee_id}/visibilite-patients")
+def get_visibility_details(employee_id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Retourne la liste des patients visibles et invisibles pour un employé donné (Admin uniquement)."""
+    return employee_service.get_visibility_details(employee_id, db)
+
+
+@router.post("/visibilite-globale")
+def apply_global_visibility(data: GlobalVisibilityRequest, db: Session = Depends(get_db), _=Depends(require_admin)):
+    """Accorde ou révoque la visibilité de tous les patients pour toute l'équipe ou une sélection d'employés (Admin uniquement)."""
+    return employee_service.apply_global_visibility(data, db)

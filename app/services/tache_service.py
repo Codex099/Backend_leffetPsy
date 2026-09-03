@@ -46,16 +46,40 @@ def get_by_id(tache_id: str, db: Session) -> Tache:
     return _enrich(t, db)
 
 
-def create(data: TacheCreate, employee_id: str, db: Session) -> Tache:
-    tache = Tache(id=str(uuid.uuid4()), cree_par=employee_id, **data.model_dump())
+def create(data: TacheCreate, employee, db: Session) -> Tache:
+    assigne_a = data.assigne_a
+    # Seul l'administrateur peut assigner des tâches à d'autres employés
+    if employee.role != "admin":
+        if assigne_a and assigne_a != employee.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seul l'administrateur peut assigner des tâches à d'autres employés",
+            )
+        assigne_a = employee.id
+
+    tache_data = data.model_dump()
+    tache_data["assigne_a"] = assigne_a
+    tache = Tache(id=str(uuid.uuid4()), cree_par=employee.id, **tache_data)
     db.add(tache)
     db.commit()
     db.refresh(tache)
     return _enrich(tache, db)
 
 
-def update(tache_id: str, data: TacheUpdate, db: Session) -> Tache:
+def update(tache_id: str, data: TacheUpdate, employee, db: Session) -> Tache:
     tache = get_by_id(tache_id, db)
+    if employee.role != "admin":
+        if tache.assigne_a != employee.id and tache.cree_par != employee.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Accès à cette tâche non autorisé",
+            )
+        if data.assigne_a is not None and data.assigne_a != employee.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seul l'administrateur peut assigner des tâches à d'autres employés",
+            )
+
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tache, field, value)
     db.commit()
@@ -63,7 +87,13 @@ def update(tache_id: str, data: TacheUpdate, db: Session) -> Tache:
     return _enrich(tache, db)
 
 
-def delete(tache_id: str, db: Session) -> None:
+def delete(tache_id: str, employee, db: Session) -> None:
     tache = get_by_id(tache_id, db)
+    if employee.role != "admin":
+        if tache.cree_par != employee.id and tache.assigne_a != employee.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez pas supprimer cette tâche",
+            )
     db.delete(tache)
     db.commit()

@@ -14,7 +14,20 @@ from app.services.access_control_service import get_accessible_patient_ids
 
 
 def _enrich(target, db: Session):
-    """Attache le patient : l'agenda et le dashboard affichent son nom, pas l'UUID."""
+    """Attache le patient et les employe_ids : l'agenda et le dashboard affichent le nom et les praticiens."""
+    if not target:
+        return target
+    items = target if isinstance(target, list) else [target]
+    seance_ids = [s.id for s in items if hasattr(s, "id") and s.id]
+    if seance_ids:
+        rows = db.query(SeanceEmploye.seance_id, SeanceEmploye.employe_id).filter(
+            SeanceEmploye.seance_id.in_(seance_ids)
+        ).all()
+        mapping = {}
+        for s_id, e_id in rows:
+            mapping.setdefault(s_id, []).append(e_id)
+        for s in items:
+            setattr(s, "employe_ids", mapping.get(s.id, []))
     return enrichment_service.attach_patient(target, db)
 
 
@@ -66,6 +79,13 @@ def create(data: SeanceCreate, db: Session) -> Seance:
 
     db.commit()
     db.refresh(seance)
+    # Si la séance est terminée (faite), prolonger de 4 semaines si créneaux automatiques
+    if seance.statut == StatutSeanceEnum.faite and seance.patient_id:
+        try:
+            from app.services import planning_service
+            planning_service.check_and_extend_creneaux_auto(seance.patient_id, db)
+        except Exception:
+            pass
     return _enrich(seance, db)
 
 
@@ -106,10 +126,34 @@ def set_planning_recurrent(patient_id: str, data: PatientPlanningRecurrentCreate
             setattr(existing, field, value)
         db.commit()
         db.refresh(existing)
+        if existing.mode_generation == ModeGenerationEnum.auto:
+            try:
+                from app.services import planning_service
+                from datetime import timedelta
+                today = date_type.today()
+                debut = max(existing.date_debut, today)
+                fin = debut + timedelta(days=existing.horizon_jours or 28)
+                if existing.date_fin:
+                    fin = min(existing.date_fin, fin)
+                planning_service.generer_creneaux_manuel(existing, debut, fin, db)
+            except Exception:
+                pass
         return existing
 
     planning = PatientPlanningRecurrent(id=str(uuid.uuid4()), patient_id=patient_id, **data.model_dump())
     db.add(planning)
     db.commit()
     db.refresh(planning)
+    if planning.mode_generation == ModeGenerationEnum.auto:
+        try:
+            from app.services import planning_service
+            from datetime import timedelta
+            today = date_type.today()
+            debut = max(planning.date_debut, today)
+            fin = debut + timedelta(days=planning.horizon_jours or 28)
+            if planning.date_fin:
+                fin = min(planning.date_fin, fin)
+            planning_service.generer_creneaux_manuel(planning, debut, fin, db)
+        except Exception:
+            pass
     return planning
