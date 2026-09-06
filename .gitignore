@@ -6,3 +6,4 @@
 /psycare.db
 /seed.py
 /uploads
+/migrate_tmp.load
