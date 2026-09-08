@@ -7,7 +7,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 # pyrefly: ignore [missing-import]
-from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.core.config import settings
 from app.db.session import engine, Base
@@ -29,13 +28,11 @@ from app.routes import (
     notes_patients,
     uploads,
     mcp,
+    cron,
 )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("psycare")
-
-# Scheduler APScheduler pour la génération automatique des créneaux récurrents
-scheduler = BackgroundScheduler()
 
 
 @asynccontextmanager
@@ -44,18 +41,7 @@ async def lifespan(app: FastAPI):
     logger.info("Création des tables de base de données si absentes...")
     Base.metadata.create_all(bind=engine)
 
-    # 2. Démarrage de la tâche de génération automatique de créneaux
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    scheduler.add_job(run_auto_generation, "interval", hours=24, id="auto_planning_job")
-    scheduler.start()
-    logger.info("Scheduler APScheduler démarré (auto-generation quotidienne)")
-
     yield
-
-    # Arrêt propre du scheduler
-    scheduler.shutdown()
-    logger.info("Scheduler APScheduler arrêté")
-
 
 app = FastAPI(
     title="PsyCare API",
@@ -77,11 +63,13 @@ app.add_middleware(
 # minimum_size=1000 : ne compresse que les réponses ≥ 1 Ko (évite le surcoût sur les petites réponses)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# S'assurer que le dossier d'upload existe avant le montage StaticFiles
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-
-# Montage du dossier d'uploads pour servir les fichiers statiques
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# S'essayer de créer le dossier d'upload (échouera silencieusement sur Vercel car read-only)
+try:
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    # Montage du dossier d'uploads pour servir les fichiers statiques en local
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+except OSError:
+    logger.warning("Impossible de créer le dossier d'uploads. (Ignoré sur Vercel)")
 
 
 # Enregistrement des routers
@@ -99,6 +87,7 @@ app.include_router(plans_therapeutiques.router)
 app.include_router(notes_patients.router)
 app.include_router(uploads.router)
 app.include_router(mcp.router)
+app.include_router(cron.router)
 
 
 @app.get("/api/health", tags=["Health"])
