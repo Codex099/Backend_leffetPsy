@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+﻿from pydantic_settings import BaseSettings
 from typing import Optional
 
 
@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     BASE_URL: str = "http://localhost:8000"
     CRON_SECRET: str = "secret-local"
 
-    # Supabase Storage — pour les fichiers uploadés en production
-    # Trouver dans : Supabase → Settings → API
-    SUPABASE_URL: Optional[str] = None         # ex: https://rvwpwbwrilvojorhhhde.supabase.co
-    SUPABASE_ANON_KEY: Optional[str] = None    # clé "anon public"
-    SUPABASE_STORAGE_BUCKET: str = "psycare-uploads"
+    # Cloudinary Storage — pour les fichiers uploadés (fallback backend)
+    # Trouver dans : Cloudinary → Dashboard → Account Details
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None   # ex: dupnlcne9
+    CLOUDINARY_API_KEY: Optional[str] = None       # ex: 733821433592611
+    CLOUDINARY_API_SECRET: Optional[str] = None    # depuis le dashboard
+    CLOUDINARY_UPLOAD_PRESET: str = "psycare_uploads"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
