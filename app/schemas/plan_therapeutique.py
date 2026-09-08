@@ -41,14 +41,6 @@ class PlanTherapeutiqueUpdate(BaseModel):
         return v.strip() if isinstance(v, str) else v
 
 
-class PlanTherapeutiqueResponse(PlanTherapeutiqueBase):
-    id: str
-    patient_id: str
-    cree_par: Optional[str] = None
-    etapes: List[EtapeResponse] = []
-
-    model_config = {"from_attributes": True}
-
 
 # ─── Étapes ───────────────────────────────────────────────────────────────────
 
@@ -93,4 +85,13 @@ class EtapeResponse(EtapeBase):
 
 class CreerTacheDepuisEtapeRequest(BaseModel):
     assigne_a: str
+
+
+class PlanTherapeutiqueResponse(PlanTherapeutiqueBase):
+    id: str
+    patient_id: str
+    cree_par: Optional[str] = None
+    etapes: List[EtapeResponse] = []
+
+    model_config = {"from_attributes": True}
 
