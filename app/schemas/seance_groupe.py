@@ -41,6 +41,7 @@ class SeanceGroupeResponse(SeanceGroupeBase):
 class ParticipantUpdate(BaseModel):
     statut_presence: Optional[StatutPresenceGroupeEnum] = None
     description_etat: Optional[str] = None
+    note_individuelle: Optional[str] = None
     reponses_questionnaire: Optional[Any] = None
     medias: Optional[Any] = None
 

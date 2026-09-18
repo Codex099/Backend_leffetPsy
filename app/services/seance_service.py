@@ -3,14 +3,32 @@ from datetime import date as date_type
 from typing import List, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.seance import Seance, StatutSeanceEnum
 from app.models.seance_employe import SeanceEmploye
+from app.models.employee_patient_access import EmployeePatientAccess
 from app.models.patient_planning_recurrent import PatientPlanningRecurrent, ModeGenerationEnum
 from app.schemas.seance import SeanceCreate, SeanceUpdate, PatientPlanningRecurrentCreate
 from app.services import enrichment_service
 from app.services.access_control_service import get_accessible_patient_ids
+
+
+def _ensure_access(emp_id: str, patient_id: str, db: Session):
+    """Garantit que l'employé a un accès direct au patient."""
+    if not emp_id or not patient_id:
+        return
+    existing = (
+        db.query(EmployeePatientAccess)
+        .filter(
+            EmployeePatientAccess.employee_id == emp_id,
+            EmployeePatientAccess.patient_id == patient_id,
+        )
+        .first()
+    )
+    if not existing:
+        db.add(EmployeePatientAccess(employee_id=emp_id, patient_id=patient_id))
 
 
 def _enrich(target, db: Session):
@@ -46,7 +64,18 @@ def get_all(
     q = db.query(Seance)
     # Le périmètre d'accès s'applique toujours : les filtres s'y ajoutent.
     if patient_ids is not None:
-        q = q.filter(Seance.patient_id.in_(patient_ids))
+        my_seance_ids = [
+            r[0]
+            for r in db.query(SeanceEmploye.seance_id)
+            .filter(SeanceEmploye.employe_id == employee.id)
+            .all()
+        ]
+        q = q.filter(
+            or_(
+                Seance.patient_id.in_(patient_ids),
+                Seance.id.in_(my_seance_ids),
+            )
+        )
     if patient_id is not None:
         q = q.filter(Seance.patient_id == patient_id)
     if date is not None:
@@ -76,6 +105,8 @@ def create(data: SeanceCreate, db: Session) -> Seance:
 
     for emp_id in (data.employe_ids or []):
         db.add(SeanceEmploye(seance_id=seance.id, employe_id=emp_id))
+        if seance.patient_id:
+            _ensure_access(emp_id, seance.patient_id, db)
 
     db.commit()
     db.refresh(seance)
@@ -103,6 +134,8 @@ def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
         db.query(SeanceEmploye).filter(SeanceEmploye.seance_id == seance_id).delete()
         for emp_id in target_emp_ids:
             db.add(SeanceEmploye(seance_id=seance_id, employe_id=emp_id))
+            if seance.patient_id:
+                _ensure_access(emp_id, seance.patient_id, db)
 
     db.commit()
     db.refresh(seance)

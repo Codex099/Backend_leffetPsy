@@ -132,7 +132,11 @@ def update_participant(
         db.add(participant)
 
     for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(participant, field, value)
+        if field == "note_individuelle":
+            if not getattr(participant, "description_etat", None) or data.description_etat is None:
+                participant.description_etat = value
+        elif hasattr(participant, field):
+            setattr(participant, field, value)
     participant.redige_par = employee_id
     db.commit()
     db.refresh(participant)
