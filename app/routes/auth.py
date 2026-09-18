@@ -18,6 +18,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=EmployeeResponse)
-def me(employee=Depends(get_current_employee)):
-    """Retourne les infos de l'employé connecté."""
-    return employee
+def me(employee=Depends(get_current_employee), db: Session = Depends(get_db)):
+    """Retourne les infos de l'employé connecté avec ses patients assignés."""
+    from app.services.employee_service import _enrich_employee
+    return _enrich_employee(employee, db)
+

@@ -28,6 +28,7 @@ class SeanceUpdate(BaseModel):
     reponses_questionnaire: Optional[Any] = None
     medias: Optional[Any] = None
     employe_ids: Optional[List[str]] = None
+    employe_id: Optional[str] = None
 
 
 class SeanceResponse(SeanceBase):

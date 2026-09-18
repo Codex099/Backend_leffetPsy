@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import date as date_type
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -45,13 +45,35 @@ def create_seance_groupe(data: SeanceGroupeCreate, db: Session = Depends(get_db)
 
 
 @router.get("/{seance_id}", response_model=SeanceGroupeResponse)
-def get_seance_groupe(seance_id: str, db: Session = Depends(get_db), _=Depends(get_current_employee)):
-    return seance_groupe_service.get_detail(seance_id, db)
+def get_seance_groupe(seance_id: str, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    seance = seance_groupe_service.get_detail(seance_id, db)
+    if employee.role != "admin" and seance.employe_id != employee.id:
+        from app.services.access_control_service import get_accessible_patient_ids
+        accessible_ids = get_accessible_patient_ids(employee, db) or []
+        part_ids = [p.patient_id for p in (seance.participants or [])]
+        # Vérifier si l'employé est concerné par au moins un participant
+        if not any(pid in accessible_ids for pid in part_ids):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Accès à cette séance de groupe non autorisé (vous n'êtes pas concerné par ce groupe).",
+            )
+    return seance
 
 
 @router.put("/{seance_id}", response_model=SeanceGroupeResponse)
 @router.patch("/{seance_id}", response_model=SeanceGroupeResponse)
-def update_seance_groupe(seance_id: str, data: SeanceGroupeUpdate, db: Session = Depends(get_db), _=Depends(get_current_employee)):
+def update_seance_groupe(seance_id: str, data: SeanceGroupeUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    seance = seance_groupe_service.get_by_id(seance_id, db)
+    if employee.role == "admin" and seance.employe_id and seance.employe_id != employee.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="L'administrateur a un accès en lecture seule au compte-rendu de groupe.",
+        )
+    if employee.role != "admin" and seance.employe_id and seance.employe_id != employee.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le spécialiste responsable de la séance de groupe peut la modifier.",
+        )
     return seance_groupe_service.update(seance_id, data, db)
 
 
@@ -63,4 +85,17 @@ def delete_seance_groupe(seance_id: str, db: Session = Depends(get_db), _=Depend
 @router.put("/{seance_id}/participants/{patient_id}", response_model=ParticipantResponse)
 @router.patch("/{seance_id}/participants/{patient_id}", response_model=ParticipantResponse)
 def update_participant(seance_id: str, patient_id: str, data: ParticipantUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
+    from app.services.access_control_service import check_patient_access
+    check_patient_access(patient_id, employee, db)
+    seance = seance_groupe_service.get_by_id(seance_id, db)
+    if employee.role == "admin" and seance.employe_id and seance.employe_id != employee.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="L'administrateur a un accès en lecture seule aux notes des participants.",
+        )
+    if employee.role != "admin" and seance.employe_id and seance.employe_id != employee.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le spécialiste responsable de la séance de groupe peut modifier les notes des participants.",
+        )
     return seance_groupe_service.update_participant(seance_id, patient_id, data, employee.id, db)

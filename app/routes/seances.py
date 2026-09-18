@@ -64,6 +64,32 @@ def get_seance(seance_id: str, db: Session = Depends(get_db), employee=Depends(g
 def update_seance(seance_id: str, data: SeanceUpdate, db: Session = Depends(get_db), employee=Depends(get_current_employee)):
     seance = seance_service.get_by_id(seance_id, db)
     check_patient_access(seance.patient_id, employee, db)
+
+    # Contrôle de modification du compte-rendu clinique
+    is_updating_report = (
+        data.description_etat is not None or
+        data.statut_presence is not None or
+        data.medias is not None or
+        data.reponses_questionnaire is not None
+    )
+
+    if is_updating_report:
+        employe_ids = getattr(seance, "employe_ids", [])
+        if employee.role == "admin":
+            if employe_ids and employee.id not in employe_ids:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="L'administrateur a un accès en lecture seule au compte-rendu clinique. Seul le spécialiste auteur peut le modifier.",
+                )
+        else:
+            if employe_ids and employee.id not in employe_ids:
+                from fastapi import HTTPException
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Seul le spécialiste auteur de cette séance peut modifier son compte-rendu clinique.",
+                )
+
     return seance_service.update(seance_id, data, db)
 
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.seance import Seance, StatutSeanceEnum
 from app.models.seance_employe import SeanceEmploye
-from app.models.patient_planning_recurrent import PatientPlanningRecurrent
+from app.models.patient_planning_recurrent import PatientPlanningRecurrent, ModeGenerationEnum
 from app.schemas.seance import SeanceCreate, SeanceUpdate, PatientPlanningRecurrentCreate
 from app.services import enrichment_service
 from app.services.access_control_service import get_accessible_patient_ids
@@ -91,13 +91,17 @@ def create(data: SeanceCreate, db: Session) -> Seance:
 
 def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
     seance = get_by_id(seance_id, db)
-    update_data = data.model_dump(exclude_unset=True, exclude={"employe_ids"})
+    update_data = data.model_dump(exclude_unset=True, exclude={"employe_ids", "employe_id"})
     for field, value in update_data.items():
         setattr(seance, field, value)
 
-    if data.employe_ids is not None:
+    target_emp_ids = data.employe_ids
+    if target_emp_ids is None and getattr(data, "employe_id", None) is not None:
+        target_emp_ids = [data.employe_id]
+
+    if target_emp_ids is not None:
         db.query(SeanceEmploye).filter(SeanceEmploye.seance_id == seance_id).delete()
-        for emp_id in data.employe_ids:
+        for emp_id in target_emp_ids:
             db.add(SeanceEmploye(seance_id=seance_id, employe_id=emp_id))
 
     db.commit()
