@@ -126,6 +126,12 @@ def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
     for field, value in update_data.items():
         setattr(seance, field, value)
 
+    if seance.heure_debut and seance.heure_fin and seance.heure_fin <= seance.heure_debut:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="L'heure de fin doit être strictement postérieure à l'heure de début.",
+        )
+
     target_emp_ids = data.employe_ids
     if target_emp_ids is None and getattr(data, "employe_id", None) is not None:
         target_emp_ids = [data.employe_id]

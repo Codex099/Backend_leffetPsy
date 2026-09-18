@@ -97,6 +97,11 @@ def update(seance_id: str, data: SeanceGroupeUpdate, db: Session) -> SeanceGroup
     seance = get_by_id(seance_id, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(seance, field, value)
+    if seance.heure_debut and seance.heure_fin and seance.heure_fin <= seance.heure_debut:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="L'heure de fin doit être strictement postérieure à l'heure de début.",
+        )
     db.commit()
     db.refresh(seance)
     return _enrich(seance, db)

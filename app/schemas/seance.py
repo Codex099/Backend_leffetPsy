@@ -1,6 +1,6 @@
 from typing import Optional, List, Any
 from datetime import date, time
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from app.models.seance import StatutSeanceEnum, StatutPresenceEnum
 from app.models.patient_planning_recurrent import ModeGenerationEnum
 
@@ -11,6 +11,13 @@ class SeanceBase(BaseModel):
     heure_debut: Optional[time] = None
     heure_fin: Optional[time] = None
     statut: StatutSeanceEnum = StatutSeanceEnum.prevue
+
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
 
 
 class SeanceCreate(SeanceBase):
@@ -29,6 +36,13 @@ class SeanceUpdate(BaseModel):
     medias: Optional[Any] = None
     employe_ids: Optional[List[str]] = None
     employe_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
 
 
 class SeanceResponse(SeanceBase):
@@ -56,6 +70,13 @@ class PatientPlanningRecurrentCreate(BaseModel):
     employe_id: Optional[str] = None
     mode_generation: ModeGenerationEnum = ModeGenerationEnum.manuel
     horizon_jours: Optional[int] = 28
+
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
 
 
 class PatientPlanningRecurrentResponse(PatientPlanningRecurrentCreate):

@@ -1,6 +1,6 @@
 from typing import Optional, List, Any
 from datetime import time
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from app.models.groupe import TypePlanningEnum
 from app.models.groupe_planning_recurrent import JourSemaineEnum
 
@@ -53,6 +53,13 @@ class GroupePlanningRecurrentCreate(BaseModel):
     jour_semaine: JourSemaineEnum
     heure_debut: Optional[time] = None
     heure_fin: Optional[time] = None
+
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
 
 
 class GroupePlanningRecurrentResponse(GroupePlanningRecurrentCreate):

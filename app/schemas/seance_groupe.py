@@ -1,6 +1,6 @@
 from typing import Optional, Any
 from datetime import date, time
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from app.models.seance_groupe import StatutSeanceGroupeEnum
 from app.models.seance_groupe_participant import StatutPresenceGroupeEnum
 
@@ -13,6 +13,13 @@ class SeanceGroupeBase(BaseModel):
     heure_fin: Optional[time] = None
     statut: StatutSeanceGroupeEnum = StatutSeanceGroupeEnum.prevue
 
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
+
 
 class SeanceGroupeCreate(SeanceGroupeBase):
     pass
@@ -24,6 +31,13 @@ class SeanceGroupeUpdate(BaseModel):
     heure_debut: Optional[time] = None
     heure_fin: Optional[time] = None
     statut: Optional[StatutSeanceGroupeEnum] = None
+
+    @model_validator(mode="after")
+    def validate_heures(self):
+        if self.heure_debut is not None and self.heure_fin is not None:
+            if self.heure_fin <= self.heure_debut:
+                raise ValueError("L'heure de fin doit être strictement postérieure à l'heure de début.")
+        return self
 
 
 class SeanceGroupeResponse(SeanceGroupeBase):
