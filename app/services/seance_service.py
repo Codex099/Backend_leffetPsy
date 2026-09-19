@@ -13,6 +13,7 @@ from app.models.patient_planning_recurrent import PatientPlanningRecurrent, Mode
 from app.schemas.seance import SeanceCreate, SeanceUpdate, PatientPlanningRecurrentCreate
 from app.services import enrichment_service
 from app.services.access_control_service import get_accessible_patient_ids
+from app.services.conflict_service import validate_employees_no_conflict
 
 
 def _ensure_access(emp_id: str, patient_id: str, db: Session):
@@ -98,6 +99,21 @@ def get_by_id(seance_id: str, db: Session) -> Seance:
 
 
 def create(data: SeanceCreate, db: Session) -> Seance:
+    # Validation des conflits d'horaires pour les praticiens
+    if (
+        data.statut != StatutSeanceEnum.annulee
+        and data.heure_debut
+        and data.heure_fin
+        and data.employe_ids
+    ):
+        validate_employees_no_conflict(
+            db=db,
+            employee_ids=data.employe_ids,
+            target_date=data.date,
+            heure_debut=data.heure_debut,
+            heure_fin=data.heure_fin,
+        )
+
     seance_data = data.model_dump(exclude={"employe_ids"})
     seance = Seance(id=str(uuid.uuid4()), **seance_data)
     db.add(seance)
@@ -135,6 +151,26 @@ def update(seance_id: str, data: SeanceUpdate, db: Session) -> Seance:
     target_emp_ids = data.employe_ids
     if target_emp_ids is None and getattr(data, "employe_id", None) is not None:
         target_emp_ids = [data.employe_id]
+    if target_emp_ids is None:
+        existing_emp_rows = db.query(SeanceEmploye.employe_id).filter(SeanceEmploye.seance_id == seance_id).all()
+        target_emp_ids = [r[0] for r in existing_emp_rows]
+
+    # Validation des conflits d'horaires pour les praticiens
+    if (
+        seance.statut != StatutSeanceEnum.annulee
+        and seance.date
+        and seance.heure_debut
+        and seance.heure_fin
+        and target_emp_ids
+    ):
+        validate_employees_no_conflict(
+            db=db,
+            employee_ids=target_emp_ids,
+            target_date=seance.date,
+            heure_debut=seance.heure_debut,
+            heure_fin=seance.heure_fin,
+            exclude_seance_id=seance.id,
+        )
 
     if target_emp_ids is not None:
         db.query(SeanceEmploye).filter(SeanceEmploye.seance_id == seance_id).delete()
@@ -165,7 +201,7 @@ def get_planning_recurrent(patient_id: str, db: Session) -> Optional[PatientPlan
 def set_planning_recurrent(patient_id: str, data: PatientPlanningRecurrentCreate, db: Session) -> PatientPlanningRecurrent:
     existing = get_planning_recurrent(patient_id, db)
     if existing:
-        for field, value in data.model_dump().items():
+        for field, value in data.model_dump(exclude={"employe_ids"}).items():
             setattr(existing, field, value)
         db.commit()
         db.refresh(existing)
@@ -183,7 +219,7 @@ def set_planning_recurrent(patient_id: str, data: PatientPlanningRecurrentCreate
                 pass
         return existing
 
-    planning = PatientPlanningRecurrent(id=str(uuid.uuid4()), patient_id=patient_id, **data.model_dump())
+    planning = PatientPlanningRecurrent(id=str(uuid.uuid4()), patient_id=patient_id, **data.model_dump(exclude={"employe_ids"}))
     db.add(planning)
     db.commit()
     db.refresh(planning)

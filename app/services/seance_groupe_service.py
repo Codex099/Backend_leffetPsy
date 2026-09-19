@@ -5,10 +5,11 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.seance_groupe import SeanceGroupe
+from app.models.seance_groupe import SeanceGroupe, StatutSeanceGroupeEnum
 from app.models.seance_groupe_participant import SeanceGroupeParticipant
 from app.schemas.seance_groupe import SeanceGroupeCreate, SeanceGroupeUpdate, ParticipantUpdate
 from app.services import enrichment_service
+from app.services.conflict_service import validate_employees_no_conflict
 
 
 def _enrich(target, db: Session):
@@ -86,6 +87,20 @@ def get_detail(seance_id: str, db: Session) -> SeanceGroupe:
 
 
 def create(data: SeanceGroupeCreate, db: Session) -> SeanceGroupe:
+    if (
+        data.statut != StatutSeanceGroupeEnum.annulee
+        and data.heure_debut
+        and data.heure_fin
+        and data.employe_id
+    ):
+        validate_employees_no_conflict(
+            db=db,
+            employee_ids=[data.employe_id],
+            target_date=data.date,
+            heure_debut=data.heure_debut,
+            heure_fin=data.heure_fin,
+        )
+
     seance = SeanceGroupe(id=str(uuid.uuid4()), **data.model_dump())
     db.add(seance)
     db.commit()
@@ -102,6 +117,23 @@ def update(seance_id: str, data: SeanceGroupeUpdate, db: Session) -> SeanceGroup
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="L'heure de fin doit être strictement postérieure à l'heure de début.",
         )
+
+    if (
+        seance.statut != StatutSeanceGroupeEnum.annulee
+        and seance.date
+        and seance.heure_debut
+        and seance.heure_fin
+        and seance.employe_id
+    ):
+        validate_employees_no_conflict(
+            db=db,
+            employee_ids=[seance.employe_id],
+            target_date=seance.date,
+            heure_debut=seance.heure_debut,
+            heure_fin=seance.heure_fin,
+            exclude_seance_groupe_id=seance.id,
+        )
+
     db.commit()
     db.refresh(seance)
     return _enrich(seance, db)

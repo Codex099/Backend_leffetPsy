@@ -68,8 +68,19 @@ class PatientPlanningRecurrentCreate(BaseModel):
     date_debut: date
     date_fin: Optional[date] = None
     employe_id: Optional[str] = None
+    employe_ids: Optional[List[str]] = None
     mode_generation: ModeGenerationEnum = ModeGenerationEnum.manuel
     horizon_jours: Optional[int] = 28
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_employe_ids(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("employe_id") and data.get("employe_ids"):
+                ids = data.get("employe_ids")
+                if isinstance(ids, list) and len(ids) > 0 and ids[0]:
+                    data["employe_id"] = str(ids[0])
+        return data
 
     @model_validator(mode="after")
     def validate_heures(self):

@@ -38,13 +38,16 @@ JOUR_TO_WEEKDAY = {
 }
 
 
+from app.services.conflict_service import check_employee_conflict
+
+
 def _generate_slots(
     planning: PatientPlanningRecurrent,
     date_debut: date,
     date_fin: date,
     db: Session,
-) -> int:
-    """Génère les séances manquantes pour un planning entre date_debut et date_fin."""
+) -> tuple[int, list[str]]:
+    """Génère les séances manquantes pour un planning entre date_debut et date_fin sans créer de conflit."""
     jours_cibles = {
         JOUR_TO_WEEKDAY[j.lower()]
         for j in (planning.jours_semaine or [])
@@ -52,6 +55,7 @@ def _generate_slots(
     }
 
     created = 0
+    conflicts: list[str] = []
     current = date_debut
     while current <= date_fin:
         if current.weekday() in jours_cibles:
@@ -66,25 +70,44 @@ def _generate_slots(
                 .first()
             )
             if not existing:
-                seance = Seance(
-                    id=str(uuid.uuid4()),
-                    patient_id=planning.patient_id,
-                    date=current,
-                    heure_debut=planning.heure_debut,
-                    heure_fin=planning.heure_fin,
-                    statut=StatutSeanceEnum.prevue,
-                )
-                db.add(seance)
-                db.flush()
+                # Vérifier si l'employé assigné a un conflit d'horaires sur cette date
+                conflit = None
+                if planning.employe_id and planning.heure_debut and planning.heure_fin:
+                    conflit = check_employee_conflict(
+                        db=db,
+                        employee_id=planning.employe_id,
+                        target_date=current,
+                        heure_debut=planning.heure_debut,
+                        heure_fin=planning.heure_fin,
+                    )
 
-                # Assigner le psychologue par défaut si configuré
-                if planning.employe_id:
-                    db.add(SeanceEmploye(seance_id=seance.id, employe_id=planning.employe_id))
-                created += 1
+                if conflit:
+                    msg = (
+                        f"Le {current.strftime('%d/%m/%Y')} : créneau de {planning.heure_debut.strftime('%H:%M')} non généré car "
+                        f"{conflit['detail']}"
+                    )
+                    conflicts.append(msg)
+                    logger.warning(f"[AutoPlanning] {msg}")
+                else:
+                    seance = Seance(
+                        id=str(uuid.uuid4()),
+                        patient_id=planning.patient_id,
+                        date=current,
+                        heure_debut=planning.heure_debut,
+                        heure_fin=planning.heure_fin,
+                        statut=StatutSeanceEnum.prevue,
+                    )
+                    db.add(seance)
+                    db.flush()
+
+                    # Assigner le psychologue par défaut si configuré
+                    if planning.employe_id:
+                        db.add(SeanceEmploye(seance_id=seance.id, employe_id=planning.employe_id))
+                    created += 1
         current += timedelta(days=1)
 
     db.commit()
-    return created
+    return created, conflicts
 
 
 def generer_creneaux_manuel(
@@ -92,7 +115,7 @@ def generer_creneaux_manuel(
     date_debut: date,
     date_fin: date,
     db: Session,
-) -> int:
+) -> tuple[int, list[str]]:
     """Génération manuelle pour une période donnée (déclenchée par route API)."""
     return _generate_slots(planning, date_debut, date_fin, db)
 
@@ -145,7 +168,7 @@ def check_and_extend_creneaux_auto(patient_id: str, db: Session) -> int:
         if planning.date_fin:
             end_date = min(planning.date_fin, end_date)
         if start_date <= end_date:
-            created = _generate_slots(planning, start_date, end_date, db)
+            created, _ = _generate_slots(planning, start_date, end_date, db)
             logger.info(f"[AutoPlanning] {created} créneaux de 4 semaines générés pour le patient {patient_id}")
             return created
     return 0
@@ -171,7 +194,8 @@ def run_auto_generation() -> None:
             fin = min(p.date_fin, horizon) if p.date_fin else horizon
             debut = max(p.date_debut, today)
             if debut <= fin:
-                total += _generate_slots(p, debut, fin, db)
+                c, _ = _generate_slots(p, debut, fin, db)
+                total += c
         logger.info(f"[AutoPlanning] {total} créneaux générés pour {len(plannings)} plannings")
     except Exception as exc:
         logger.error(f"[AutoPlanning] Erreur : {exc}")

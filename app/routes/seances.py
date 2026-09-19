@@ -125,5 +125,9 @@ def generer_creneaux(patient_id: str, data: GenererCreneauxRequest, db: Session 
     if not planning:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Aucun planning récurrent configuré")
-    count = planning_service.generer_creneaux_manuel(planning, data.date_debut, data.date_fin, db)
-    return {"message": f"{count} créneaux générés"}
+    count, conflicts = planning_service.generer_creneaux_manuel(planning, data.date_debut, data.date_fin, db)
+    return {
+        "message": f"{count} créneaux générés",
+        "created": count,
+        "conflicts": conflicts,
+    }
