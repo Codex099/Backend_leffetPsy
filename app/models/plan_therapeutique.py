@@ -34,7 +34,10 @@ class PlanTherapeutique(Base):
     statut = Column(Enum(StatutPlanEnum), nullable=False, default=StatutPlanEnum.actif)
     date_debut = Column(Date, nullable=True)
     date_fin = Column(Date, nullable=True)
+    assigne_a = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
     cree_par = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+
+    assigne_employee = relationship("Employee", foreign_keys=[assigne_a], lazy="joined")
 
     etapes = relationship(
         "EtapePlanTherapeutique",

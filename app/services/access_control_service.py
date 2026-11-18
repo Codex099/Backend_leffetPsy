@@ -82,6 +82,41 @@ def get_accessible_patient_ids(employee: Employee, db: Session) -> list[str] | N
     except Exception:
         pass
 
+    # 5. Plans thérapeutiques assignés (Plan, Étape, Sous-étape)
+    try:
+        from app.models.plan_therapeutique import PlanTherapeutique
+        from app.models.etape_plan_therapeutique import EtapePlanTherapeutique
+        from app.models.sous_etape_plan_therapeutique import SousEtapePlanTherapeutique
+
+        plan_pids = {
+            r[0]
+            for r in db.query(PlanTherapeutique.patient_id)
+            .filter(PlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
+            .all()
+        }
+        patient_ids.update(plan_pids)
+
+        etape_pids = {
+            r[0]
+            for r in db.query(PlanTherapeutique.patient_id)
+            .join(EtapePlanTherapeutique, EtapePlanTherapeutique.plan_id == PlanTherapeutique.id)
+            .filter(EtapePlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
+            .all()
+        }
+        patient_ids.update(etape_pids)
+
+        sous_etape_pids = {
+            r[0]
+            for r in db.query(PlanTherapeutique.patient_id)
+            .join(EtapePlanTherapeutique, EtapePlanTherapeutique.plan_id == PlanTherapeutique.id)
+            .join(SousEtapePlanTherapeutique, SousEtapePlanTherapeutique.etape_id == EtapePlanTherapeutique.id)
+            .filter(SousEtapePlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
+            .all()
+        }
+        patient_ids.update(sous_etape_pids)
+    except Exception:
+        pass
+
     return list(patient_ids)
 
 

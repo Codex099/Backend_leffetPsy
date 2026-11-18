@@ -16,6 +16,7 @@ from app.models.seance_groupe import SeanceGroupe
 from app.models.seance_groupe_participant import SeanceGroupeParticipant
 from app.models.plan_therapeutique import PlanTherapeutique
 from app.models.etape_plan_therapeutique import EtapePlanTherapeutique
+from app.models.sous_etape_plan_therapeutique import SousEtapePlanTherapeutique
 from app.models.tache import Tache
 from app.models.evenement_calendrier import EvenementCalendrier
 from app.models.note_patient import NotePatient
@@ -40,6 +41,7 @@ __all__ = [
     "SeanceGroupeParticipant",
     "PlanTherapeutique",
     "EtapePlanTherapeutique",
+    "SousEtapePlanTherapeutique",
     "Tache",
     "EvenementCalendrier",
     "NotePatient",

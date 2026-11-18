@@ -2,6 +2,7 @@ import uuid
 import enum
 
 from sqlalchemy import Column, String, Text, Integer, Enum, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -20,4 +21,14 @@ class EtapePlanTherapeutique(Base):
     description = Column(Text, nullable=True)
     statut = Column(Enum(StatutEtapeEnum), nullable=False, default=StatutEtapeEnum.a_faire)
     ordre = Column(Integer, nullable=False)
+    assigne_a = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True, index=True)
     cree_par = Column(String, ForeignKey("employees.id", ondelete="SET NULL"), nullable=True)
+
+    assigne_employee = relationship("Employee", foreign_keys=[assigne_a], lazy="joined")
+    sous_etapes = relationship(
+        "SousEtapePlanTherapeutique",
+        backref="etape",
+        cascade="all, delete-orphan",
+        order_by="SousEtapePlanTherapeutique.ordre",
+        lazy="joined",
+    )
