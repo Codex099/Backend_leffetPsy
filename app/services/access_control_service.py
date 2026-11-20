@@ -2,122 +2,153 @@
 Centralisation du contrôle d'accès aux données médicales.
 
 Règle :
-  - admin → accès à tous les patients
-  - psychologue / éducatrice → uniquement les patients dans employee_patient_access
+  - admin → accès à tous les patients (None = pas de filtre)
+  - psychologue / éducatrice → uniquement les patients accessibles (via accès explicites
+    + séances + groupes + plans thérapeutiques)
 
-Utilisation dans les routes :
-    employee = Depends(get_current_employee)
-    patient = check_patient_access(patient_id, employee, db)
+OPTIMISATION PERFORMANCE :
+  - Requête SQL UNION unique au lieu de 5-7 requêtes séquentielles
+  - Cache in-memory Python avec TTL 90s par employé (évite les recalculs répétés)
+  - Invalidation ciblée sur mutation des accès
 """
 
+import time
 from fastapi import HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.employee import Employee
 from app.models.patient import Patient
-from app.models.employee_patient_access import EmployeePatientAccess
+
+
+# ─── Cache in-memory simple ───────────────────────────────────────────────────
+# Format : { employee_id_str: (patient_ids_list_or_None, timestamp_float) }
+_access_cache: dict[str, tuple[list[str] | None, float]] = {}
+_CACHE_TTL_SECONDS = 90  # secondes — délai avant recalcul
+
+
+def _get_from_cache(employee_id: str) -> list[str] | None | bool:
+    """
+    Retourne la liste des IDs si le cache est frais, sinon False (cache manquant/expiré).
+    Retourne None si l'entrée dit "accès total" (admin).
+    """
+    entry = _access_cache.get(str(employee_id))
+    if entry is None:
+        return False  # pas en cache
+    cached_ids, cached_at = entry
+    if time.monotonic() - cached_at > _CACHE_TTL_SECONDS:
+        del _access_cache[str(employee_id)]
+        return False  # expiré
+    return cached_ids  # peut être None (admin) ou list
+
+
+def _set_cache(employee_id: str, ids: list[str] | None) -> None:
+    _access_cache[str(employee_id)] = (ids, time.monotonic())
+
+
+def invalidate_access_cache(employee_id: str) -> None:
+    """Appeler après modification des accès d'un employé."""
+    _access_cache.pop(str(employee_id), None)
+
+
+def clear_access_cache() -> None:
+    """Vide tout le cache (ex: redémarrage, maintenance)."""
+    _access_cache.clear()
+
+
+# ─── Requête principale ───────────────────────────────────────────────────────
+
+_UNION_QUERY = text("""
+    SELECT DISTINCT patient_id FROM (
+        -- 1. Accès explicites (table employee_patient_access)
+        SELECT patient_id::text
+          FROM employee_patient_access
+         WHERE employee_id = :eid
+
+        UNION
+
+        -- 2. Séances individuelles assignées à l'employé
+        SELECT s.patient_id::text
+          FROM seance s
+          JOIN seance_employe se ON se.seance_id = s.id
+         WHERE se.employe_id = :eid
+           AND s.patient_id IS NOT NULL
+
+        UNION
+
+        -- 3. Patients des séances de groupe animées par l'employé
+        SELECT sgp.patient_id::text
+          FROM seance_groupe_participant sgp
+          JOIN seance_groupe sg ON sg.id = sgp.seance_groupe_id
+         WHERE sg.employe_id = :eid
+           AND sgp.patient_id IS NOT NULL
+
+        UNION
+
+        -- 4. Notes de groupe rédigées par l'employé
+        SELECT patient_id::text
+          FROM seance_groupe_participant
+         WHERE redige_par = :eid
+           AND patient_id IS NOT NULL
+
+        UNION
+
+        -- 5. Plans thérapeutiques assignés à l'employé
+        SELECT patient_id::text
+          FROM plan_therapeutique
+         WHERE assigne_a = :eid
+           AND patient_id IS NOT NULL
+
+        UNION
+
+        -- 6. Étapes de plans assignées à l'employé
+        SELECT pt.patient_id::text
+          FROM etape_plan_therapeutique e
+          JOIN plan_therapeutique pt ON pt.id = e.plan_id
+         WHERE e.assigne_a = :eid
+           AND pt.patient_id IS NOT NULL
+
+        UNION
+
+        -- 7. Sous-étapes de plans assignées à l'employé
+        SELECT pt.patient_id::text
+          FROM sous_etape_plan_therapeutique se2
+          JOIN etape_plan_therapeutique e2 ON e2.id = se2.etape_id
+          JOIN plan_therapeutique pt ON pt.id = e2.plan_id
+         WHERE se2.assigne_a = :eid
+           AND pt.patient_id IS NOT NULL
+    ) AS combined
+    WHERE patient_id IS NOT NULL
+""")
 
 
 def get_accessible_patient_ids(employee: Employee, db: Session) -> list[str] | None:
     """
     Retourne la liste des patient_ids accessibles pour un employé.
-    Retourne None si admin (= tous les patients).
-    Inclut :
-      1. Les accès explicites dans EmployeePatientAccess
-      2. Les patients des séances individuelles où l'employé est assigné (SeanceEmploye)
-      3. Les patients des séances de groupe animées par l'employé (SeanceGroupe)
-      4. Les patients pour lesquels l'employé a rédigé une note (SeanceGroupeParticipant.redige_par)
+    Retourne None si admin (= accès à tous les patients, pas de filtre WHERE).
+
+    Optimisé :
+      - Requête SQL UNION unique (au lieu de 5-7 requêtes séquentielles)
+      - Cache in-memory TTL 90s pour éviter les recalculs inutiles
     """
     if employee.role == "admin":
         return None  # pas de filtre
 
-    # 1. Accès explicites
-    patient_ids = {
-        r[0]
-        for r in db.query(EmployeePatientAccess.patient_id)
-        .filter(EmployeePatientAccess.employee_id == employee.id)
-        .all()
-    }
+    # Vérifier le cache
+    cached = _get_from_cache(str(employee.id))
+    if cached is not False:
+        return cached  # type: ignore[return-value]
 
-    # 2. Séances individuelles assignées
+    # Exécuter la requête UNION optimisée
     try:
-        from app.models.seance import Seance
-        from app.models.seance_employe import SeanceEmploye
-        seance_pids = {
-            r[0]
-            for r in db.query(Seance.patient_id)
-            .join(SeanceEmploye, SeanceEmploye.seance_id == Seance.id)
-            .filter(SeanceEmploye.employe_id == employee.id, Seance.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(seance_pids)
+        result = db.execute(_UNION_QUERY, {"eid": str(employee.id)})
+        ids = [str(row[0]) for row in result if row[0] is not None]
     except Exception:
-        pass
+        # Fallback silencieux : pas de filtre en cas d'erreur SQL inattendue
+        ids = []
 
-    # 3. Séances de groupe animées
-    try:
-        from app.models.seance_groupe import SeanceGroupe
-        from app.models.seance_groupe_participant import SeanceGroupeParticipant
-        groupe_pids = {
-            r[0]
-            for r in db.query(SeanceGroupeParticipant.patient_id)
-            .join(SeanceGroupe, SeanceGroupe.id == SeanceGroupeParticipant.seance_groupe_id)
-            .filter(SeanceGroupe.employe_id == employee.id, SeanceGroupeParticipant.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(groupe_pids)
-    except Exception:
-        pass
-
-    # 4. Notes de groupe rédigées
-    try:
-        from app.models.seance_groupe_participant import SeanceGroupeParticipant
-        redige_pids = {
-            r[0]
-            for r in db.query(SeanceGroupeParticipant.patient_id)
-            .filter(SeanceGroupeParticipant.redige_par == employee.id, SeanceGroupeParticipant.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(redige_pids)
-    except Exception:
-        pass
-
-    # 5. Plans thérapeutiques assignés (Plan, Étape, Sous-étape)
-    try:
-        from app.models.plan_therapeutique import PlanTherapeutique
-        from app.models.etape_plan_therapeutique import EtapePlanTherapeutique
-        from app.models.sous_etape_plan_therapeutique import SousEtapePlanTherapeutique
-
-        plan_pids = {
-            r[0]
-            for r in db.query(PlanTherapeutique.patient_id)
-            .filter(PlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(plan_pids)
-
-        etape_pids = {
-            r[0]
-            for r in db.query(PlanTherapeutique.patient_id)
-            .join(EtapePlanTherapeutique, EtapePlanTherapeutique.plan_id == PlanTherapeutique.id)
-            .filter(EtapePlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(etape_pids)
-
-        sous_etape_pids = {
-            r[0]
-            for r in db.query(PlanTherapeutique.patient_id)
-            .join(EtapePlanTherapeutique, EtapePlanTherapeutique.plan_id == PlanTherapeutique.id)
-            .join(SousEtapePlanTherapeutique, SousEtapePlanTherapeutique.etape_id == EtapePlanTherapeutique.id)
-            .filter(SousEtapePlanTherapeutique.assigne_a == employee.id, PlanTherapeutique.patient_id.isnot(None))
-            .all()
-        }
-        patient_ids.update(sous_etape_pids)
-    except Exception:
-        pass
-
-    return list(patient_ids)
+    _set_cache(str(employee.id), ids)
+    return ids
 
 
 def check_patient_access(patient_id: str, employee: Employee, db: Session) -> Patient:
@@ -127,7 +158,10 @@ def check_patient_access(patient_id: str, employee: Employee, db: Session) -> Pa
     """
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient introuvable")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient introuvable",
+        )
 
     if employee.role == "admin":
         return patient
@@ -139,4 +173,3 @@ def check_patient_access(patient_id: str, employee: Employee, db: Session) -> Pa
             detail="Accès à ce patient non autorisé",
         )
     return patient
-
